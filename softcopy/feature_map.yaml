@@ -1,0 +1,36 @@
+---
+review_status: pending_review
+features:
+- feature_id: FEAT-001
+  review_status: pending_review
+  name:
+    value: root
+    status: derived
+    blocking: false
+    owner_skill: softcopy-feature-map
+    sources:
+    - source_type: repo_scan
+      source_ref: softcopy/outputs/scan/module_candidates.yaml#/modules
+      authority_level: B
+      confidence: 0.6
+  summary:
+    value: Candidate feature derived from module root.
+    status: derived
+    blocking: false
+    owner_skill: softcopy-feature-map
+    sources:
+    - source_type: repo_scan
+      source_ref: softcopy/outputs/scan/module_candidates.yaml#/modules
+      authority_level: B
+      confidence: 0.6
+  priority: medium
+  source_paths:
+  - softcopy_support.py
+  routes_or_commands: []
+  ui_pages: []
+  api_groups: []
+  manual_sections:
+  - SEC-001
+  screenshot_ids: []
+  application_claims:
+  - Provide root related capability.

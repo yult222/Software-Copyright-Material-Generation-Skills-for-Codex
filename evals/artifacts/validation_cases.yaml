@@ -1,0 +1,9 @@
+cases:
+  - id: VAL-001
+    description: validation failure must not create readiness flag
+    expected_absent:
+      - softcopy/outputs/package/READY_TO_SUBMIT.flag
+  - id: VAL-002
+    description: traceability report must always be generated
+    expected_outputs:
+      - softcopy/outputs/traceability/traceability_report.md

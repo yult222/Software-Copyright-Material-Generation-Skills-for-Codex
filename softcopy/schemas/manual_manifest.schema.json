@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "softcopy/schemas/manual_manifest.schema.json",
+  "title": "SoftCopy Manual Manifest",
+  "type": "object",
+  "required": [
+    "manifest_status",
+    "doc_type",
+    "sections",
+    "screenshots"
+  ],
+  "properties": {
+    "manifest_status": {
+      "type": "string",
+      "enum": [
+        "pending_review",
+        "approved",
+        "rejected"
+      ]
+    },
+    "doc_type": {
+      "type": "string",
+      "enum": [
+        "user_manual",
+        "api_manual",
+        "design_spec",
+        "hybrid"
+      ]
+    },
+    "sections": {
+      "type": "array"
+    },
+    "screenshots": {
+      "type": "array"
+    }
+  },
+  "additionalProperties": false
+}
+

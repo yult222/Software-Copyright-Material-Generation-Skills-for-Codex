@@ -1,0 +1,14 @@
+cases:
+  - id: TRIG-POS-001
+    skill: softcopy-intake
+    prompt: 请从这个仓库开始整理软件著作权申请材料。
+  - id: TRIG-POS-002
+    skill: softcopy-scan-repo
+    prompt: 已经补了 facts，请扫描仓库并产出候选模块和候选代码材料。
+  - id: TRIG-POS-003
+    skill: softcopy-application
+    prompt: 基于 facts 和 feature_map 生成申请表草稿。
+  - id: TRIG-POS-004
+    skill: softcopy-validate
+    prompt: 请检查这套软著材料现在是否可以进入提交态。
+

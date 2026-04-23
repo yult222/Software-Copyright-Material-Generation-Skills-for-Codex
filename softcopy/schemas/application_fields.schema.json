@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "softcopy/schemas/application_fields.schema.json",
+  "title": "SoftCopy Application Fields",
+  "type": "object",
+  "required": [
+    "draft_mode",
+    "software_name_full",
+    "version",
+    "development_completion_date",
+    "first_publication_status",
+    "copyright_owner_type",
+    "copyright_owners",
+    "development_mode",
+    "project_type",
+    "main_functions",
+    "needs_confirmation"
+  ],
+  "properties": {
+    "draft_mode": {
+      "type": "string",
+      "enum": [
+        "provisional",
+        "formal"
+      ]
+    },
+    "main_functions": {
+      "type": "array"
+    },
+    "technical_highlights": {
+      "type": "array"
+    },
+    "runtime_environment": {
+      "type": "object"
+    },
+    "needs_confirmation": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": true
+}
+

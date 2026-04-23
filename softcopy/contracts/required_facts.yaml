@@ -1,0 +1,65 @@
+core_required_facts:
+  - field: software_name_full
+    accepted_statuses:
+      formal_application_ready:
+        - confirmed
+      ready_to_submit:
+        - confirmed
+  - field: version
+    accepted_statuses:
+      formal_application_ready:
+        - confirmed
+      ready_to_submit:
+        - confirmed
+  - field: development_completion_date
+    accepted_statuses:
+      formal_application_ready:
+        - confirmed
+      ready_to_submit:
+        - confirmed
+  - field: first_publication_status
+    accepted_statuses:
+      formal_application_ready:
+        - confirmed
+      ready_to_submit:
+        - confirmed
+  - field: copyright_owner_type
+    accepted_statuses:
+      formal_application_ready:
+        - confirmed
+      ready_to_submit:
+        - confirmed
+  - field: copyright_owners
+    accepted_statuses:
+      formal_application_ready:
+        - confirmed
+      ready_to_submit:
+        - confirmed
+  - field: development_mode
+    accepted_statuses:
+      formal_application_ready:
+        - confirmed
+      ready_to_submit:
+        - confirmed
+  - field: project_type
+    accepted_statuses:
+      formal_application_ready:
+        - confirmed
+      ready_to_submit:
+        - confirmed
+conditional_required_facts:
+  - field: first_publication_date
+    when:
+      field: first_publication_status
+      equals: published
+    accepted_statuses:
+      formal_application_ready:
+        - confirmed
+      ready_to_submit:
+        - confirmed
+optional_facts:
+  - software_name_short
+  - application_scenario
+  - technical_highlights
+  - notes
+

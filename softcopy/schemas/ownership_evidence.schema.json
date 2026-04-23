@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "softcopy/schemas/ownership_evidence.schema.json",
+  "title": "SoftCopy Ownership Evidence",
+  "type": "object",
+  "required": [
+    "evidence_status",
+    "development_mode",
+    "required_documents"
+  ],
+  "properties": {
+    "evidence_status": {
+      "type": "string",
+      "enum": [
+        "pending_review",
+        "approved",
+        "rejected"
+      ]
+    },
+    "development_mode": {
+      "type": "string"
+    },
+    "required_documents": {
+      "type": "array"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}
+

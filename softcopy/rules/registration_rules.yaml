@@ -1,0 +1,131 @@
+rules:
+  - rule_id: REG-020
+    title: source_code_document_page_window
+    rule_status: active
+    severity_default: ERROR
+    authority_level: A
+    source_type: official
+    source_name: 国家版权局规章《计算机软件著作权登记办法》
+    source_ref: https://www.ncac.gov.cn/xxfb/flfg/bmgz/202410/P020241015604759788122.pdf
+    source_locator: 第十条，第42至46行
+    jurisdiction: CN
+    scope_level: national
+    office_selector: []
+    effective_version: 国家版权局1号令
+    effective_from: "2002-02-20"
+    last_reviewed_at: "2026-04-22"
+    reviewed_by: Codex
+    applies_to:
+      - code_doc
+    threshold:
+      front_pages: 30
+      back_pages: 30
+      fallback_if_total_lt: 60
+    notes: 程序鉴别材料前后各连续30页，不足60页的应全部提交。
+  - rule_id: REG-021
+    title: source_code_lines_per_page
+    rule_status: active
+    severity_default: ERROR
+    authority_level: A
+    source_type: official
+    source_name: 国家版权局规章《计算机软件著作权登记办法》
+    source_ref: https://www.ncac.gov.cn/xxfb/flfg/bmgz/202410/P020241015604759788122.pdf
+    source_locator: 第十条，第42至46行
+    jurisdiction: CN
+    scope_level: national
+    office_selector: []
+    effective_version: 国家版权局1号令
+    effective_from: "2002-02-20"
+    last_reviewed_at: "2026-04-22"
+    reviewed_by: Codex
+    applies_to:
+      - code_doc
+    threshold:
+      min_lines_per_page: 50
+    notes: 程序每页不少于50行，结果页和注释不计在内。
+  - rule_id: REG-022
+    title: documentation_page_window
+    rule_status: active
+    severity_default: ERROR
+    authority_level: A
+    source_type: official
+    source_name: 国家版权局规章《计算机软件著作权登记办法》
+    source_ref: https://www.ncac.gov.cn/xxfb/flfg/bmgz/202410/P020241015604759788122.pdf
+    source_locator: 第十条，第42至46行
+    jurisdiction: CN
+    scope_level: national
+    office_selector: []
+    effective_version: 国家版权局1号令
+    effective_from: "2002-02-20"
+    last_reviewed_at: "2026-04-22"
+    reviewed_by: Codex
+    applies_to:
+      - manual_doc
+    threshold:
+      front_pages: 30
+      back_pages: 30
+      fallback_if_total_lt: 60
+    notes: 文档鉴别材料前后各连续30页，不足60页的应全部提交。
+  - rule_id: REG-023
+    title: documentation_lines_per_page
+    rule_status: active
+    severity_default: ERROR
+    authority_level: A
+    source_type: official
+    source_name: 国家版权局规章《计算机软件著作权登记办法》
+    source_ref: https://www.ncac.gov.cn/xxfb/flfg/bmgz/202410/P020241015604759788122.pdf
+    source_locator: 第十条，第42至46行
+    jurisdiction: CN
+    scope_level: national
+    office_selector: []
+    effective_version: 国家版权局1号令
+    effective_from: "2002-02-20"
+    last_reviewed_at: "2026-04-22"
+    reviewed_by: Codex
+    applies_to:
+      - manual_doc
+    threshold:
+      min_lines_per_page: 30
+    notes: 文档每页不少于30行，结果页和注释不计在内。
+  - rule_id: REG-024
+    title: filing_paper_size_requirement
+    rule_status: active
+    severity_default: ERROR
+    authority_level: A
+    source_type: official
+    source_name: 国家版权局规章《计算机软件著作权登记办法》
+    source_ref: https://www.ncac.gov.cn/xxfb/flfg/bmgz/202410/P020241015604759788122.pdf
+    source_locator: 第十七条，第86至91行
+    jurisdiction: CN
+    scope_level: national
+    office_selector: []
+    effective_version: 国家版权局1号令
+    effective_from: "2002-02-20"
+    last_reviewed_at: "2026-04-22"
+    reviewed_by: Codex
+    applies_to:
+      - printed_materials
+    threshold:
+      paper: A4
+    notes: 申请表和鉴别材料应当使用A4纸。
+  - rule_id: REG-025
+    title: version_consistency_across_materials
+    rule_status: draft
+    severity_default: ERROR
+    authority_level: A
+    source_type: official
+    source_name: ""
+    source_ref: ""
+    source_locator: ""
+    jurisdiction: CN
+    scope_level: local
+    office_selector: []
+    effective_version: ""
+    effective_from: ""
+    last_reviewed_at: ""
+    reviewed_by: ""
+    applies_to:
+      - all_materials
+    threshold:
+      exact_match: true
+    notes: "Local office guidance must not activate until filing office is confirmed."

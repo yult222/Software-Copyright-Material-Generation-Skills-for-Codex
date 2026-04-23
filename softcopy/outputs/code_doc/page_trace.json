@@ -1,0 +1,16 @@
+{
+  "pages": [
+    {
+      "page": 1,
+      "path": "softcopy_support.py",
+      "sources": [
+        {
+          "source_type": "repo_scan",
+          "source_ref": "softcopy/outputs/scan/repo_scan.json#/candidate_core_files",
+          "authority_level": "B",
+          "confidence": 0.8
+        }
+      ]
+    }
+  ]
+}

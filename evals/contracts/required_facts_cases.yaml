@@ -1,0 +1,14 @@
+cases:
+  - id: FACT-001
+    description: core required facts are missing
+    expected_errors:
+      - core_required_fact_not_confirmed
+  - id: FACT-002
+    description: first_publication_status is not confirmed
+    expected_errors:
+      - core_required_fact_not_confirmed
+  - id: FACT-003
+    description: first_publication_status is confirmed as published but first_publication_date is missing
+    expected_errors:
+      - conditional_required_fact_not_confirmed
+

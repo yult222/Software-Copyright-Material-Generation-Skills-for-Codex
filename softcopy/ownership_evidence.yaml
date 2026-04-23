@@ -1,0 +1,15 @@
+---
+evidence_status: pending_review
+development_mode: ''
+required_documents:
+- doc_id: PROOF-001
+  name: Identity or organization proof
+  required: true
+  provided: false
+  file_ref: ''
+- doc_id: PROOF-002
+  name: Task assignment or project proof
+  required: false
+  provided: false
+  file_ref: ''
+notes: ''

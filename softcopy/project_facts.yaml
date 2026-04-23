@@ -1,0 +1,115 @@
+filing_context:
+  jurisdiction: CN
+  office: ""
+facts:
+  software_name_full:
+    value: ""
+    status: needs_confirmation
+    blocking: true
+    owner_skill: softcopy-intake
+    sources: []
+  software_name_short:
+    value: ""
+    status: missing
+    blocking: false
+    owner_skill: softcopy-intake
+    sources: []
+  version:
+    value: ""
+    status: needs_confirmation
+    blocking: true
+    owner_skill: softcopy-intake
+    sources: []
+  development_completion_date:
+    value: ""
+    status: needs_confirmation
+    blocking: true
+    owner_skill: softcopy-intake
+    sources: []
+  first_publication_status:
+    value: ""
+    status: needs_confirmation
+    blocking: true
+    owner_skill: softcopy-intake
+    sources: []
+  first_publication_date:
+    value: ""
+    status: needs_confirmation
+    blocking: true
+    owner_skill: softcopy-intake
+    sources: []
+  copyright_owner_type:
+    value: ""
+    status: needs_confirmation
+    blocking: true
+    owner_skill: softcopy-intake
+    sources: []
+  copyright_owners:
+    value: []
+    status: needs_confirmation
+    blocking: true
+    owner_skill: softcopy-intake
+    sources: []
+  development_mode:
+    value: ""
+    status: needs_confirmation
+    blocking: true
+    owner_skill: softcopy-intake
+    sources: []
+  project_type:
+    value: ""
+    status: needs_confirmation
+    blocking: true
+    owner_skill: softcopy-intake
+    sources: []
+profile:
+  has_gui:
+    value: false
+    status: derived
+    blocking: false
+    owner_skill: softcopy-scan-repo
+    sources: []
+  has_backend_api:
+    value: false
+    status: derived
+    blocking: false
+    owner_skill: softcopy-scan-repo
+    sources: []
+  primary_languages:
+    value: []
+    status: derived
+    blocking: false
+    owner_skill: softcopy-scan-repo
+    sources: []
+  entry_points:
+    value: []
+    status: candidate
+    blocking: false
+    owner_skill: softcopy-scan-repo
+    sources: []
+  runtime_environment:
+    value:
+      os: []
+      database: []
+      middleware: []
+      browser: []
+      other_dependencies: []
+    status: candidate
+    blocking: false
+    owner_skill: softcopy-scan-repo
+    sources: []
+  application_scenario:
+    value: ""
+    status: needs_confirmation
+    blocking: false
+    owner_skill: softcopy-intake
+    sources: []
+  technical_highlights:
+    value: []
+    status: candidate
+    blocking: false
+    owner_skill: softcopy-application
+    sources: []
+status:
+  draft_status: intake_incomplete
+

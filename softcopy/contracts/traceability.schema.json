@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "softcopy/contracts/traceability.schema.json",
+  "title": "SoftCopy Traceability Envelope",
+  "type": "object",
+  "required": [
+    "value",
+    "status",
+    "blocking",
+    "owner_skill",
+    "sources"
+  ],
+  "properties": {
+    "value": {},
+    "status": {
+      "type": "string",
+      "enum": [
+        "confirmed",
+        "candidate",
+        "derived",
+        "needs_confirmation",
+        "missing",
+        "not_applicable"
+      ]
+    },
+    "blocking": {
+      "type": "boolean"
+    },
+    "owner_skill": {
+      "type": "string",
+      "minLength": 1
+    },
+    "last_updated_by": {
+      "type": "string"
+    },
+    "sources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "source_type",
+          "source_ref",
+          "authority_level",
+          "confidence"
+        ],
+        "properties": {
+          "source_type": {
+            "type": "string",
+            "enum": [
+              "explicit_fact",
+              "human_review",
+              "repository_file",
+              "repo_scan",
+              "feature_map",
+              "manual_manifest",
+              "ownership_evidence",
+              "generated_template",
+              "rule_file"
+            ]
+          },
+          "source_ref": {
+            "type": "string",
+            "minLength": 1
+          },
+          "authority_level": {
+            "type": "string",
+            "enum": [
+              "A",
+              "B",
+              "C"
+            ]
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          }
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "additionalProperties": true
+}
+

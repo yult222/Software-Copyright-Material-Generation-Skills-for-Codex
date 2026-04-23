@@ -1,0 +1,11 @@
+cases:
+  - id: TRIG-NEG-001
+    skill: softcopy-intake
+    prompt: 帮我解释一下这个 Python 报错。
+  - id: TRIG-NEG-002
+    skill: softcopy-application
+    prompt: 帮我写一段产品宣传文案。
+  - id: TRIG-NEG-003
+    skill: softcopy-validate
+    prompt: 只帮我润色申请表中的功能描述。
+

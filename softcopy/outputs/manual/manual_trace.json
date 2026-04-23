@@ -1,0 +1,16 @@
+{
+  "sections": [
+    {
+      "section_id": "SEC-001",
+      "sources": [
+        {
+          "source_type": "manual_manifest",
+          "source_ref": "softcopy/manual_manifest.yaml#/sections/SEC-001",
+          "authority_level": "B",
+          "confidence": 0.9
+        }
+      ]
+    }
+  ],
+  "screenshots": []
+}

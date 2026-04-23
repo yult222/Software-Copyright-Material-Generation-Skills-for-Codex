@@ -1,0 +1,10 @@
+cases:
+  - id: TRACE-001
+    description: blocking fact has no sources
+    expected_errors:
+      - traceability_missing_source
+  - id: TRACE-002
+    description: main function has no feature or scan evidence
+    expected_errors:
+      - main_function_not_traceable
+

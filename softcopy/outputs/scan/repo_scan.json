@@ -1,0 +1,46 @@
+{
+  "primary_languages": [
+    "Python"
+  ],
+  "framework_signals": [],
+  "candidate_entry_points": [],
+  "excluded_directories": [
+    ".agents",
+    ".git",
+    ".next",
+    ".nuxt",
+    ".venv",
+    "__pycache__",
+    "build",
+    "coverage",
+    "dist",
+    "evals",
+    "node_modules",
+    "out",
+    "softcopy",
+    "target",
+    "venv"
+  ],
+  "candidate_modules": [
+    {
+      "name": "root",
+      "paths": [
+        "softcopy_support.py"
+      ],
+      "effective_code_lines": 65,
+      "rationale": "Top-level source bucket with repository code."
+    }
+  ],
+  "candidate_core_files": [
+    {
+      "path": "softcopy_support.py",
+      "effective_code_lines": 65,
+      "priority": 1
+    }
+  ],
+  "detected_routes": [],
+  "code_line_summary": {
+    "total_files": 1,
+    "total_effective_code_lines": 65
+  }
+}

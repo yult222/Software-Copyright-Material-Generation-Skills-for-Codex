@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "softcopy/schemas/project_facts.schema.json",
+  "title": "SoftCopy Project Facts",
+  "type": "object",
+  "required": [
+    "filing_context",
+    "facts",
+    "profile",
+    "status"
+  ],
+  "properties": {
+    "filing_context": {
+      "type": "object",
+      "required": [
+        "jurisdiction",
+        "office"
+      ],
+      "properties": {
+        "jurisdiction": {
+          "type": "string"
+        },
+        "office": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "facts": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "profile": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "status": {
+      "type": "object",
+      "required": [
+        "draft_status"
+      ],
+      "properties": {
+        "draft_status": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": false
+}
+

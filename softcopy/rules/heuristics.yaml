@@ -1,0 +1,26 @@
+heuristics:
+  - heuristic_id: HEU-001
+    title: final_page_should_prefer_module_boundary
+    severity_default: WARNING
+    applies_to:
+      - code_doc
+    description: Prefer ending code excerpts near a logical module boundary.
+  - heuristic_id: HEU-002
+    title: screenshot_repetition_high
+    severity_default: WARNING
+    applies_to:
+      - manual_doc
+    description: Repeated screenshots reduce material quality and should be reviewed.
+  - heuristic_id: HEU-003
+    title: ui_shell_dominates_code_selection
+    severity_default: WARNING
+    applies_to:
+      - code_doc
+    description: Code evidence should not over-concentrate on UI wrapper files.
+  - heuristic_id: HEU-004
+    title: marketing_language_detected
+    severity_default: WARNING
+    applies_to:
+      - application
+    description: Avoid exaggerated or marketing-heavy descriptions in formal materials.
+

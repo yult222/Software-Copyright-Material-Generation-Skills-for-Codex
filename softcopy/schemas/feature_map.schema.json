@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "softcopy/schemas/feature_map.schema.json",
+  "title": "SoftCopy Feature Map",
+  "type": "object",
+  "required": [
+    "review_status",
+    "features"
+  ],
+  "properties": {
+    "review_status": {
+      "type": "string",
+      "enum": [
+        "pending_review",
+        "approved",
+        "rejected"
+      ]
+    },
+    "features": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "feature_id",
+          "review_status",
+          "source_paths",
+          "application_claims",
+          "manual_sections"
+        ],
+        "properties": {
+          "feature_id": {
+            "type": "string"
+          },
+          "review_status": {
+            "type": "string"
+          },
+          "source_paths": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "application_claims": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "manual_sections": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "additionalProperties": false
+}
+

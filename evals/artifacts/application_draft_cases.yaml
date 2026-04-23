@@ -1,0 +1,11 @@
+cases:
+  - id: APP-001
+    description: facts incomplete should still produce provisional draft
+    expected_outputs:
+      - softcopy/outputs/application/application_fields.json
+      - softcopy/outputs/application/application_draft.md
+    expected_draft_mode: provisional
+  - id: APP-002
+    description: confirmed facts plus approved feature map allow formal draft
+    expected_draft_mode: formal
+
