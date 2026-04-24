@@ -1,7 +1,0 @@
----
-selection_status: pending_review
-feature_map_review_status: pending_review
-selected_files:
-- path: softcopy_support.py
-  effective_code_lines: 65
-  priority: 1

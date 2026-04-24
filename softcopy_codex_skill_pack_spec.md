@@ -3,7 +3,7 @@
 ## 0. 文档状态
 
 - 文档角色：唯一权威规范（single source of truth）
-- 生效日期：2026-04-22
+- 生效日期：2026-04-24
 - 适用对象：后续 coding、`AGENTS.md`、各个 `SKILL.md`、schemas、contracts、rules、evals、项目介绍文案
 - 废止文档：
   - `softcopy_codex_skill_pack_spec (1).md`
@@ -19,11 +19,11 @@
 
 ### 1.1 中文标准介绍
 
-SoftCopy Codex Skill Pack 是一套面向 Codex 的软件著作权材料生成与校验规范。它从已完成并可运行的软件项目仓库出发，分离“显式事实”“仓库证据”“草稿生成”“字段追溯”“规则校验”五个层面，目标不是自动编造可提交材料，而是稳定产出可人工复核、可追溯、可阻断校验的申请材料包。
+SoftCopy Codex Skill Pack 是一套面向 Codex 的软件著作权材料生成与校验规范和 `Skill + CLI` 工具包。它从已完成并可运行的软件项目仓库出发，分离“显式事实”“仓库证据”“草稿生成”“字段追溯”“规则校验”五个层面，目标不是自动编造可提交材料，而是稳定产出可人工复核、可追溯、可阻断校验的申请材料包。
 
 ### 1.2 English Standard Intro
 
-SoftCopy Codex Skill Pack is a Codex-first specification for generating and validating software copyright application materials from a finished and runnable software repository. It does not fabricate legal facts. It separates explicit facts, repository evidence, drafting, traceability, and validation so that every formal output is reviewable and every submission-ready conclusion is rule-backed.
+SoftCopy Codex Skill Pack is a Codex-first specification and `Skill + CLI` toolkit for generating and validating software copyright application materials from a finished and runnable software repository. It does not fabricate legal facts. It separates explicit facts, repository evidence, drafting, traceability, and validation so that every formal output is reviewable and every submission-ready conclusion is rule-backed.
 
 ---
 
@@ -67,7 +67,9 @@ SoftCopy Codex Skill Pack is a Codex-first specification for generating and vali
 
 ## 4. 总体架构
 
-本项目分为两层，不允许混写。
+本项目发布形态为 `Skill + CLI`。Codex skill pack 是交互式工作流入口，Python CLI 是迁移、演示和自动化验证入口。两者 MUST 共用 `softcopy_tool/` 中的同一套实现，不允许在各 skill 脚本中复制核心逻辑。
+
+本项目逻辑分为两层，不允许混写。
 
 ### 4.1 Layer A：工程实现规范
 
@@ -80,6 +82,8 @@ SoftCopy Codex Skill Pack is a Codex-first specification for generating and vali
 - traceability 数据模型
 - schemas
 - evals
+- CLI commands
+- migration behavior
 
 ### 4.2 Layer B：规则映射层
 
@@ -97,6 +101,8 @@ SoftCopy Codex Skill Pack is a Codex-first specification for generating and vali
 1. 工程实现逻辑 MUST 读取 `contracts/`、`schemas/`、`rules/`，而不是把规则硬编码进 prompt 或脚本
 2. 规则变化时 SHOULD 优先改 `softcopy/rules/`，而不是直接改 skill 行为
 3. 若某项 `ERROR` 没有完整规则来源元数据，则该项 MUST NOT 作为 `ERROR` 生效
+4. `.agents/skills/*/scripts` MUST 是 thin wrapper，调用 `softcopy_tool.workflow` 或 CLI，不得重新实现业务逻辑
+5. `init` MUST 迁移 `.agents/`、`softcopy_tool/`、`softcopy/contracts/`、`softcopy/rules/`、`softcopy/schemas/`、模板 YAML 和填写指南，且默认不覆盖目标仓库已有文件
 
 ---
 
@@ -141,6 +147,11 @@ SoftCopy Codex Skill Pack is a Codex-first specification for generating and vali
 ## 6. 目录结构
 
 ```text
+.gitignore
+LICENSE
+README.md
+pyproject.toml
+
 .agents/
   AGENTS.md
   skills/
@@ -177,6 +188,13 @@ SoftCopy Codex Skill Pack is a Codex-first specification for generating and vali
       scripts/
       references/
 
+softcopy_tool/
+  __init__.py
+  __main__.py
+  cli.py
+  support.py
+  workflow.py
+
 softcopy/
   contracts/
     required_facts.yaml
@@ -195,6 +213,8 @@ softcopy/
   manual_manifest.yaml
   ownership_evidence.yaml
   outputs/
+    # runtime generated files ignored by git;
+    # only directory .gitkeep files may be tracked
     intake/
     scan/
     feature_map/
@@ -216,7 +236,43 @@ evals/
   artifacts/
     application_draft_cases.yaml
     validation_cases.yaml
+
+examples/
+  minimal-project/
+    README.md
+    src/
+    docs/
+
+docs/
+  project_facts_guide.md
 ```
+
+### 6.1 Git 跟踪规则
+
+1. `softcopy/outputs/**` MUST 被 `.gitignore` 忽略
+2. `softcopy/outputs/**/.gitkeep` MAY 被跟踪，用于保留目录结构
+3. `__pycache__/`、`*.pyc`、构建产物、本地 IDE 文件 MUST 被忽略
+4. `examples/*` 下由 `init` 生成的 `.agents/`、`softcopy/`、`softcopy_tool/` 和 `softcopy_support.py` MUST 被忽略，避免读者运行 Quickstart 后污染仓库状态
+
+### 6.2 CLI 公共接口
+
+以下命令 MUST 可通过 `python3 -m softcopy_tool` 执行：
+
+```text
+init --target <repo>
+intake --repo-root <repo>
+scan --repo-root <repo>
+feature-map --repo-root <repo>
+proof-check --repo-root <repo>
+application --repo-root <repo>
+code-doc --repo-root <repo>
+manual --repo-root <repo>
+validate --repo-root <repo>
+run-all --repo-root <repo>
+clean --repo-root <repo>
+```
+
+`run-all` 的标准顺序 MUST 为 `scan -> intake -> feature-map -> proof-check -> manual -> application -> code-doc -> validate`。`clean` MUST 只清理 `softcopy/outputs/**` 中的运行生成物，不得删除 facts、contracts、rules、schemas 或人工 review 文件。
 
 ---
 
@@ -981,9 +1037,11 @@ authority_level:
 - 非触发：
   - 只做简单申请表草稿且明确允许 provisional 模式
 - 必写输出：
-  - `softcopy/feature_map.yaml`
+  - `softcopy/outputs/feature_map/feature_map.candidate.yaml`
   - `softcopy/outputs/feature_map/feature_map_report.md`
 - 硬规则：
+  - 常规运行不得覆盖已存在的 `softcopy/feature_map.yaml`
+  - 人工确认后的候选内容才允许合并进 `softcopy/feature_map.yaml`
   - 正式阶段必须有人审通过
   - `review_status != approved` 时不得支撑 formal readiness
 
@@ -1037,7 +1095,6 @@ authority_level:
   - 没有功能边界、没有截图来源的情况下直接编写正式手册
 - 必写输出：
   - `softcopy/outputs/manual/manual_manifest.stub.yaml`
-  - `softcopy/manual_manifest.yaml`
   - `softcopy/outputs/manual/manual_outline.md`
   - `softcopy/outputs/manual/manual.md`
   - `softcopy/outputs/manual/manual_report.md`
@@ -1045,6 +1102,8 @@ authority_level:
 - 可选输出：
   - `softcopy/outputs/manual/manual.pdf`
 - 硬规则：
+  - 常规运行不得覆盖已存在的 `softcopy/manual_manifest.yaml`
+  - 人工确认后的 stub 内容才允许合并进 `softcopy/manual_manifest.yaml`
   - 不得使用与真实软件无关的示意图冒充正式截图
   - `manual_manifest.yaml` 未批准时不得进入 ready-to-submit
 
@@ -1056,10 +1115,12 @@ authority_level:
 - 非触发：
   - 单纯文案润色
 - 必写输出：
-  - `softcopy/ownership_evidence.yaml`
+  - `softcopy/outputs/proof_check/ownership_evidence.candidate.yaml`
   - `softcopy/outputs/proof_check/proof_checklist.md`
   - `softcopy/outputs/proof_check/missing_proofs.md`
 - 硬规则：
+  - 常规运行不得覆盖已存在的 `softcopy/ownership_evidence.yaml`
+  - 人工确认后的候选清单才允许合并进 `softcopy/ownership_evidence.yaml`
   - 统一使用 `development_mode`
   - 不得出现 `ownership_mode`
 
@@ -1091,12 +1152,12 @@ authority_level:
 1. `softcopy-intake`
 2. 生成 `project_facts.yaml`
 3. `softcopy-scan-repo`
-4. `softcopy-feature-map`
-5. 人工 review `feature_map.yaml`
+4. `softcopy-feature-map` 生成 `feature_map.candidate.yaml`
+5. 人工 review 后合并到 `feature_map.yaml`
 6. `softcopy-proof-check`
 7. `softcopy-manual` 生成 `manual_manifest.stub.yaml`
 8. 人工补齐截图路径、实际操作步骤、结果说明
-9. `softcopy-manual` 规范化为正式 `manual_manifest.yaml`
+9. 人工合并为正式 `manual_manifest.yaml`
 10. `softcopy-application`
 11. `softcopy-code-doc`
 12. `softcopy-manual`

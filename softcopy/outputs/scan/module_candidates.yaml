@@ -1,7 +1,0 @@
----
-modules:
-- name: root
-  paths:
-  - softcopy_support.py
-  effective_code_lines: 65
-  rationale: Top-level source bucket with repository code.

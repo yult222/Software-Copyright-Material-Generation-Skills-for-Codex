@@ -4,9 +4,20 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from pathlib import Path
 
-from scan_repo import iter_source_files, count_effective_lines
+
+def _root() -> Path:
+    current = Path(__file__).resolve()
+    for parent in current.parents:
+        if (parent / "softcopy_tool").exists():
+            return parent
+    raise RuntimeError("Repository root not found.")
+
+
+sys.path.insert(0, str(_root()))
+from softcopy_tool import workflow
 
 
 def main() -> int:
@@ -14,10 +25,9 @@ def main() -> int:
     parser.add_argument("--repo-root", default=".")
     args = parser.parse_args()
     repo_root = Path(args.repo_root).resolve()
-    files = iter_source_files(repo_root)
     payload = {
-        str(path.relative_to(repo_root)): count_effective_lines(path)
-        for path in files
+        str(path.relative_to(repo_root)): workflow.count_effective_lines(path)
+        for path in workflow.iter_source_files(repo_root)
     }
     print(json.dumps(payload, ensure_ascii=False, indent=2))
     return 0

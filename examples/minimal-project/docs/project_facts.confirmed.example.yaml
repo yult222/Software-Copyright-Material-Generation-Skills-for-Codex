@@ -1,0 +1,166 @@
+filing_context:
+  jurisdiction: CN
+  office: ""
+facts:
+  software_name_full:
+    value: SoftCopy Demo 文档管理系统
+    status: confirmed
+    blocking: true
+    owner_skill: softcopy-intake
+    sources:
+      - source_type: explicit_fact
+        source_ref: examples/minimal-project/docs/project_facts.confirmed.example.yaml#/facts/software_name_full
+        authority_level: B
+        confidence: 1.0
+  software_name_short:
+    value: SoftCopy Demo
+    status: confirmed
+    blocking: false
+    owner_skill: softcopy-intake
+    sources:
+      - source_type: explicit_fact
+        source_ref: examples/minimal-project/docs/project_facts.confirmed.example.yaml#/facts/software_name_short
+        authority_level: B
+        confidence: 1.0
+  version:
+    value: V1.0
+    status: confirmed
+    blocking: true
+    owner_skill: softcopy-intake
+    sources:
+      - source_type: explicit_fact
+        source_ref: examples/minimal-project/docs/project_facts.confirmed.example.yaml#/facts/version
+        authority_level: B
+        confidence: 1.0
+  development_completion_date:
+    value: "2026-04-24"
+    status: confirmed
+    blocking: true
+    owner_skill: softcopy-intake
+    sources:
+      - source_type: explicit_fact
+        source_ref: examples/minimal-project/docs/project_facts.confirmed.example.yaml#/facts/development_completion_date
+        authority_level: B
+        confidence: 1.0
+  first_publication_status:
+    value: unpublished
+    status: confirmed
+    blocking: true
+    owner_skill: softcopy-intake
+    sources:
+      - source_type: explicit_fact
+        source_ref: examples/minimal-project/docs/project_facts.confirmed.example.yaml#/facts/first_publication_status
+        authority_level: B
+        confidence: 1.0
+  first_publication_date:
+    value: ""
+    status: not_applicable
+    blocking: true
+    owner_skill: softcopy-intake
+    sources:
+      - source_type: explicit_fact
+        source_ref: examples/minimal-project/docs/project_facts.confirmed.example.yaml#/facts/first_publication_date
+        authority_level: B
+        confidence: 1.0
+  copyright_owner_type:
+    value: individual
+    status: confirmed
+    blocking: true
+    owner_skill: softcopy-intake
+    sources:
+      - source_type: explicit_fact
+        source_ref: examples/minimal-project/docs/project_facts.confirmed.example.yaml#/facts/copyright_owner_type
+        authority_level: B
+        confidence: 1.0
+  copyright_owners:
+    value:
+      - name: 示例著作权人
+        id_type: id_card
+        id_number_masked: "110000********0000"
+    status: confirmed
+    blocking: true
+    owner_skill: softcopy-intake
+    sources:
+      - source_type: explicit_fact
+        source_ref: examples/minimal-project/docs/project_facts.confirmed.example.yaml#/facts/copyright_owners
+        authority_level: B
+        confidence: 1.0
+  development_mode:
+    value: independent
+    status: confirmed
+    blocking: true
+    owner_skill: softcopy-intake
+    sources:
+      - source_type: explicit_fact
+        source_ref: examples/minimal-project/docs/project_facts.confirmed.example.yaml#/facts/development_mode
+        authority_level: B
+        confidence: 1.0
+  project_type:
+    value: backend_service
+    status: confirmed
+    blocking: true
+    owner_skill: softcopy-intake
+    sources:
+      - source_type: explicit_fact
+        source_ref: examples/minimal-project/docs/project_facts.confirmed.example.yaml#/facts/project_type
+        authority_level: B
+        confidence: 1.0
+profile:
+  has_gui:
+    value: false
+    status: derived
+    blocking: false
+    owner_skill: softcopy-scan-repo
+    sources: []
+  has_backend_api:
+    value: false
+    status: derived
+    blocking: false
+    owner_skill: softcopy-scan-repo
+    sources: []
+  primary_languages:
+    value: []
+    status: derived
+    blocking: false
+    owner_skill: softcopy-scan-repo
+    sources: []
+  entry_points:
+    value: []
+    status: candidate
+    blocking: false
+    owner_skill: softcopy-scan-repo
+    sources: []
+  runtime_environment:
+    value:
+      os: []
+      database: []
+      middleware: []
+      browser: []
+      other_dependencies: []
+    status: candidate
+    blocking: false
+    owner_skill: softcopy-scan-repo
+    sources: []
+  application_scenario:
+    value: Demo project for SoftCopy workflow.
+    status: confirmed
+    blocking: false
+    owner_skill: softcopy-intake
+    sources:
+      - source_type: explicit_fact
+        source_ref: examples/minimal-project/docs/project_facts.confirmed.example.yaml#/profile/application_scenario
+        authority_level: B
+        confidence: 1.0
+  technical_highlights:
+    value:
+      - Document draft and publication workflow
+    status: confirmed
+    blocking: false
+    owner_skill: softcopy-intake
+    sources:
+      - source_type: explicit_fact
+        source_ref: examples/minimal-project/docs/project_facts.confirmed.example.yaml#/profile/technical_highlights
+        authority_level: B
+        confidence: 1.0
+status:
+  draft_status: intake_incomplete

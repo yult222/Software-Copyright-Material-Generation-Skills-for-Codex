@@ -1,13 +1,5 @@
----
 manifest_status: pending_review
-doc_type: api_manual
-sections:
-- section_id: SEC-001
-  title: root
-  goal: 说明 root 的使用方式。
-  prerequisites: []
-  steps: []
-  expected_result: ''
-  screenshot_ids: []
-  notes: []
+doc_type: auto
+sections: []
 screenshots: []
+notes: "Review `softcopy/outputs/manual/manual_manifest.stub.yaml`, then merge real sections and screenshot references here."

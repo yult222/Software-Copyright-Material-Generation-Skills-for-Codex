@@ -1,8 +1,0 @@
-[
-  {
-    "code": "main_function_candidate_only",
-    "message": "Application main function still relies on candidate evidence.",
-    "path": "softcopy/outputs/application/application_fields.json#/main_functions/0",
-    "severity": "WARNING"
-  }
-]
