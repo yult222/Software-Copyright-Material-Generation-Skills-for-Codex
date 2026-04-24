@@ -1,0 +1,40 @@
+manifest_status: approved
+doc_type: api_manual
+sections:
+  - section_id: SEC-001
+    title: 文档全生命周期管理
+    goal: 说明如何通过示例系统完成文档创建、编辑、发布、归档、查询、统计与导入导出。
+    prerequisites:
+      - 已在本地安装 Python 3.10 或更高版本，并位于示例项目根目录。
+    steps:
+      - 打开终端并进入示例项目目录。
+      - 执行 python3 src/app.py 初始化演示流程。
+      - 系统调用 seed_demo_state 创建两条演示文档。
+      - 第一条演示文档标题为 Demo Guide。
+      - 第二条演示文档标题为 Release Notes。
+      - 系统调用 publish_document 发布第一条文档。
+      - 发布前系统调用 validate_document 校验标题和正文。
+      - 标题为空时校验结果包含 title is required。
+      - 正文为空时校验结果包含 body is required。
+      - 校验通过后文档状态更新为 published。
+      - 用户可以调用 create_document 新增草稿。
+      - 用户可以调用 update_document 修改标题和正文。
+      - 用户可以调用 archive_document 将文档归档。
+      - 用户可以调用 list_documents 查看全部文档。
+      - 用户可以传入状态参数筛选草稿、已发布或已归档文档。
+      - 用户可以调用 search_documents 按关键词查询标题。
+      - 用户可以调用 summarize_document 查看标题和状态摘要。
+      - 系统通过 count_by_status 汇总不同状态的数量。
+      - 系统通过 list_reports 暴露可用统计报表。
+      - 系统通过 generate_report 生成草稿数量报表。
+      - 系统通过 generate_report 生成已发布数量报表。
+      - 系统通过 generate_report 生成用户活动报表。
+      - 用户可以调用 export_document 导出 Markdown 文本。
+      - 用户可以调用 import_document 从 Markdown 文本导入文档。
+      - 用户可以调用 reset_demo_state 清空演示数据。
+    expected_result: 系统输出 published-count 报表，并能通过函数调用完成文档管理闭环。
+    screenshot_ids: []
+    notes:
+      - 该示例用于验证 SoftCopy 手册分页、traceability 与 ready gate。
+screenshots: []
+notes: "Approved demo manual manifest for SoftCopy evals."

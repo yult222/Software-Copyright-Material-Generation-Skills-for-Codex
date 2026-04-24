@@ -265,14 +265,17 @@ scan --repo-root <repo>
 feature-map --repo-root <repo>
 proof-check --repo-root <repo>
 application --repo-root <repo>
-code-doc --repo-root <repo>
-manual --repo-root <repo>
+code-doc --repo-root <repo> --formats md,pdf,docx
+manual --repo-root <repo> --formats md,pdf,docx
 validate --repo-root <repo>
-run-all --repo-root <repo>
+run-all --repo-root <repo> --formats md,pdf,docx
+evals --repo-root <repo>
 clean --repo-root <repo>
 ```
 
 `run-all` 的标准顺序 MUST 为 `scan -> intake -> feature-map -> proof-check -> manual -> application -> code-doc -> validate`。`clean` MUST 只清理 `softcopy/outputs/**` 中的运行生成物，不得删除 facts、contracts、rules、schemas 或人工 review 文件。
+
+`--formats` 默认值 MUST 为 `md`。`pdf` 和 `docx` MUST 通过 optional dependency 实现；未安装依赖时，默认 Markdown/JSON 流程仍必须可运行，显式请求 PDF/DOCX 时必须失败并给出安装指令。
 
 ---
 
@@ -1076,13 +1079,15 @@ authority_level:
 - 必写输出：
   - `softcopy/outputs/code_doc/code_selection.yaml`
   - `softcopy/outputs/code_doc/code_doc.md`
+  - `softcopy/outputs/code_doc/code_pages.json`
   - `softcopy/outputs/code_doc/code_doc_report.md`
   - `softcopy/outputs/code_doc/page_trace.json`
 - 可选输出：
   - `softcopy/outputs/code_doc/code_doc.pdf`
+  - `softcopy/outputs/code_doc/code_doc.docx`
 - 硬规则：
   - 不优先纳入测试、第三方、生成文件、纯配置
-  - 每页必须可追到文件来源
+  - 每页必须记录 `path`、`line_start`、`line_end`、`effective_line_count`、`source_ref`
   - 正式页行数规则只能由 `registration_rules.yaml` 驱动
 
 ## 11.6 `softcopy-manual`
@@ -1097,10 +1102,12 @@ authority_level:
   - `softcopy/outputs/manual/manual_manifest.stub.yaml`
   - `softcopy/outputs/manual/manual_outline.md`
   - `softcopy/outputs/manual/manual.md`
+  - `softcopy/outputs/manual/manual_pages.json`
   - `softcopy/outputs/manual/manual_report.md`
   - `softcopy/outputs/manual/manual_trace.json`
 - 可选输出：
   - `softcopy/outputs/manual/manual.pdf`
+  - `softcopy/outputs/manual/manual.docx`
 - 硬规则：
   - 常规运行不得覆盖已存在的 `softcopy/manual_manifest.yaml`
   - 人工确认后的 stub 内容才允许合并进 `softcopy/manual_manifest.yaml`
@@ -1265,6 +1272,8 @@ validator 在 MVP 就必须至少检查：
 2. Contract tests
 3. Artifact tests
 
+项目 MUST 提供 `python3 -m softcopy_tool evals --repo-root <repo>`，在临时目录执行内置 demo 场景，并输出 `softcopy/outputs/validation/eval_report.md` 与 `eval_report.json`。
+
 ### 16.1 Trigger tests
 
 必须覆盖：
@@ -1326,8 +1335,9 @@ validator 在 MVP 就必须至少检查：
 
 ### 17.3 Phase 3：成熟化
 
-- PDF / DOCX 渲染器
-- 更细的规则覆盖
+- optional PDF / DOCX 渲染器，默认 Markdown/JSON 零依赖
+- 源码与手册分页规则机器校验
+- `evals` runner 覆盖 trigger、contract、artifact 场景
 - 更强的社区 heuristics 库
 - 更细粒度的 code-doc/manual traceability
 

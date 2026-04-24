@@ -24,7 +24,8 @@
         "user_manual",
         "api_manual",
         "design_spec",
-        "hybrid"
+        "hybrid",
+        "auto"
       ]
     },
     "sections": {
@@ -32,8 +33,10 @@
     },
     "screenshots": {
       "type": "array"
+    },
+    "notes": {
+      "type": "string"
     }
   },
   "additionalProperties": false
 }
-

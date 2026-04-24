@@ -1,0 +1,37 @@
+review_status: approved
+features:
+  - feature_id: FEAT-001
+    review_status: approved
+    name:
+      value: 文档全生命周期管理
+      status: confirmed
+      blocking: false
+      owner_skill: softcopy-feature-map
+      sources:
+        - source_type: human_review
+          source_ref: examples/minimal-project/docs/feature_map.approved.example.yaml#/features/0/name
+          authority_level: B
+          confidence: 1.0
+    summary:
+      value: 支持文档创建、编辑、发布、归档、查询、统计与导入导出。
+      status: confirmed
+      blocking: false
+      owner_skill: softcopy-feature-map
+      sources:
+        - source_type: human_review
+          source_ref: examples/minimal-project/docs/feature_map.approved.example.yaml#/features/0/summary
+          authority_level: B
+          confidence: 1.0
+    priority: high
+    source_paths:
+      - src/app.py
+    routes_or_commands:
+      - python3 src/app.py
+    ui_pages: []
+    api_groups: []
+    manual_sections:
+      - SEC-001
+    screenshot_ids: []
+    application_claims:
+      - 提供文档创建、编辑、发布、归档、查询、统计与导入导出能力。
+notes: "Approved demo feature map for SoftCopy evals."

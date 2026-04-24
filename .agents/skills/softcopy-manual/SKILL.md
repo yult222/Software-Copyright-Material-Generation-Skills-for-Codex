@@ -25,12 +25,14 @@ Produce manual drafts, manifest files, and trace records.
 - `softcopy/manual_manifest.yaml`
 - `softcopy/outputs/manual/manual_outline.md`
 - `softcopy/outputs/manual/manual.md`
+- `softcopy/outputs/manual/manual_pages.json`
 - `softcopy/outputs/manual/manual_report.md`
 - `softcopy/outputs/manual/manual_trace.json`
 
 ## Optional outputs
 
 - `softcopy/outputs/manual/manual.pdf`
+- `softcopy/outputs/manual/manual.docx`
 
 ## Hard rules
 
@@ -44,4 +46,3 @@ Produce manual drafts, manifest files, and trace records.
 2. Let the operator fill screenshot paths and actual steps.
 3. Normalize to the formal manifest.
 4. Render the manual and trace file.
-

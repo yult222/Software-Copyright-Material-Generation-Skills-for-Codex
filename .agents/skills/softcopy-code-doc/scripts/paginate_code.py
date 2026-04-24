@@ -17,7 +17,7 @@ def _root() -> Path:
 
 
 sys.path.insert(0, str(_root()))
-from softcopy_tool.support import load_yaml
+from softcopy_tool.support import load_json
 
 
 def main() -> int:
@@ -25,15 +25,10 @@ def main() -> int:
     parser.add_argument("--repo-root", default=".")
     args = parser.parse_args()
     repo_root = Path(args.repo_root).resolve()
-    selection = load_yaml(repo_root / "softcopy" / "outputs" / "code_doc" / "code_selection.yaml", {})
-    pages = [
-        {"page": index, "path": item.get("path", ""), "reason": "Selected candidate core file"}
-        for index, item in enumerate(selection.get("selected_files", []), start=1)
-    ]
-    print(json.dumps(pages, ensure_ascii=False, indent=2))
+    pages = load_json(repo_root / "softcopy" / "outputs" / "code_doc" / "code_pages.json", {"pages": []})
+    print(json.dumps(pages.get("pages", []), ensure_ascii=False, indent=2))
     return 0
 
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

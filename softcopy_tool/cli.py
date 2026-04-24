@@ -7,6 +7,7 @@ from pathlib import Path
 
 from . import __version__
 from . import workflow
+from .renderers import RenderDependencyError, normalize_formats
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -17,9 +18,14 @@ def main(argv: list[str] | None = None) -> int:
     init_parser = subparsers.add_parser("init", help="migrate the skill pack into a target repository")
     init_parser.add_argument("--target", required=True)
 
-    for command in ["intake", "scan", "feature-map", "proof-check", "application", "code-doc", "manual", "validate", "run-all", "clean"]:
+    for command in ["intake", "scan", "feature-map", "proof-check", "application", "validate", "clean", "evals"]:
         item = subparsers.add_parser(command)
         item.add_argument("--repo-root", default=".")
+
+    for command in ["code-doc", "manual", "run-all"]:
+        item = subparsers.add_parser(command)
+        item.add_argument("--repo-root", default=".")
+        item.add_argument("--formats", default="md", help="comma-separated output formats: md,pdf,docx")
 
     args = parser.parse_args(argv)
     if args.command == "init":
@@ -39,8 +45,16 @@ def main(argv: list[str] | None = None) -> int:
         "validate": workflow.validate,
         "run-all": workflow.run_all,
         "clean": workflow.clean,
+        "evals": workflow.evals,
     }
-    result = dispatch[args.command](repo_root)
+    try:
+        if args.command in {"code-doc", "manual", "run-all"}:
+            result = dispatch[args.command](repo_root, formats=normalize_formats(args.formats))
+        else:
+            result = dispatch[args.command](repo_root)
+    except (RenderDependencyError, ValueError) as exc:
+        parser.error(str(exc))
+        return 2
     if args.command == "validate" and isinstance(result, dict):
         print(f"errors={len(result['errors'])} warnings={len(result['warnings'])} ready={result['ready']}")
     else:

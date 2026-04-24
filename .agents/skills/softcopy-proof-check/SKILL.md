@@ -21,7 +21,7 @@ Create ownership evidence checklists and missing-proof reports.
 
 ## Required outputs
 
-- `softcopy/ownership_evidence.yaml`
+- `softcopy/outputs/proof_check/ownership_evidence.candidate.yaml`
 - `softcopy/outputs/proof_check/proof_checklist.md`
 - `softcopy/outputs/proof_check/missing_proofs.md`
 
@@ -29,10 +29,10 @@ Create ownership evidence checklists and missing-proof reports.
 
 - Use `development_mode`, never `ownership_mode`
 - Distinguish required vs optional documents
+- Do not overwrite an existing approved `softcopy/ownership_evidence.yaml`
 
 ## Workflow summary
 
 1. Read confirmed or candidate development mode.
 2. Generate proof checklist.
 3. Mark missing and provided documents separately.
-

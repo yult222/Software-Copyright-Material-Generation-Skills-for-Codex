@@ -1,0 +1,14 @@
+evidence_status: approved
+development_mode: independent
+required_documents:
+  - doc_id: PROOF-001
+    name: Identity or organization proof
+    required: true
+    provided: true
+    file_ref: docs/proofs/owner_identity.txt
+  - doc_id: PROOF-002
+    name: Task assignment or project proof
+    required: false
+    provided: false
+    file_ref: ""
+notes: "Approved demo ownership evidence for SoftCopy evals."

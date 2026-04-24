@@ -10,6 +10,12 @@ authors = [
 ]
 dependencies = []
 
+[project.optional-dependencies]
+render = [
+  "reportlab>=4",
+  "python-docx>=1"
+]
+
 [project.scripts]
 softcopy-tool = "softcopy_tool.cli:main"
 

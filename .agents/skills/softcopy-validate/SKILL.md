@@ -33,8 +33,10 @@ Run readiness checks and write validation outputs.
 ## Hard rules
 
 - Core required facts must be `confirmed`
+- Feature map, manual manifest, and ownership evidence must be `approved`
 - Blocking fields must have trace sources
 - Only active rules with complete provenance may emit hard rule errors
+- Active page rules must be checked against generated code/manual page traces
 
 ## Workflow summary
 
@@ -42,4 +44,3 @@ Run readiness checks and write validation outputs.
 2. Run contract and consistency checks.
 3. Evaluate active rules.
 4. Write validation and traceability reports.
-

@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import re
 import shutil
+import tempfile
 from collections import Counter
 from pathlib import Path
 from typing import Any
 
+from .renderers import normalize_formats, render_optional_outputs
 from .support import (
     REPO_ROOT,
     clean_outputs as clean_outputs_dir,
@@ -104,6 +106,8 @@ APPLICATION_FIELDS = [
     "development_mode",
     "project_type",
 ]
+CODE_LINES_PER_PAGE = 50
+MANUAL_LINES_PER_PAGE = 30
 
 
 def envelope(value: Any, status: str, blocking: bool, owner_skill: str, sources: list[dict[str, Any]]) -> dict[str, Any]:
@@ -507,23 +511,100 @@ def _render_application_checklist(fields: dict[str, Any]) -> str:
     return "\n".join(lines) + "\n"
 
 
-def code_doc(repo_root: Path) -> None:
+def code_doc(repo_root: Path, formats: list[str] | None = None) -> dict[str, Any]:
     ensure_output_dirs(repo_root)
+    formats = normalize_formats(formats)
     repo_scan = load_json(repo_root / "softcopy" / "outputs" / "scan" / "repo_scan.json", {})
     selected = repo_scan.get("candidate_core_files", [])[:10]
     output_root = repo_root / "softcopy" / "outputs" / "code_doc"
     write_yaml(output_root / "code_selection.yaml", {"selection_status": "pending_review", "selected_files": selected})
-    page_trace = [{"page": index, "path": item.get("path", ""), "sources": [{"source_type": "repo_scan", "source_ref": "softcopy/outputs/scan/repo_scan.json#/candidate_core_files", "authority_level": "B", "confidence": 0.8}]} for index, item in enumerate(selected, start=1)]
+    candidate_pages = _build_code_pages(repo_root, selected)
+    pages = _select_page_window(candidate_pages)
+    page_trace = [
+        {
+            "page": item["page"],
+            "path": item.get("path", ""),
+            "line_start": item.get("line_start", 0),
+            "line_end": item.get("line_end", 0),
+            "effective_line_count": item.get("effective_line_count", 0),
+            "source_ref": item.get("source_ref", ""),
+            "sources": [{"source_type": "repository_file", "source_ref": item.get("source_ref", ""), "authority_level": "B", "confidence": 0.9}],
+        }
+        for item in pages
+    ]
+    page_payload = {
+        "page_size_effective_lines": CODE_LINES_PER_PAGE,
+        "total_candidate_pages": len(candidate_pages),
+        "selected_pages": [item["page"] for item in pages],
+        "pages": pages,
+    }
     lines = ["# Source Code Evidence Draft", "", "## File Selection Summary"]
     lines.extend([f"- `{item.get('path', '')}` ({item.get('effective_code_lines', 0)} lines)" for item in selected] or ["- None"])
-    lines.extend(["", "## Draft Source Material", "This draft lists selected source files and page trace metadata. Run a renderer when final page layout is required.", "", "## Page Trace Notes", "- See `page_trace.json`."])
-    write_text(output_root / "code_doc.md", "\n".join(lines) + "\n")
-    write_text(output_root / "code_doc_report.md", "# Code Doc Report\n\n- Draft source-code evidence was generated from current scan candidates.\n- Review file selection before formal use.\n")
+    lines.extend(["", "## Paged Source Material"])
+    for page in pages:
+        lines.extend([f"### Page {page['page']}: {page['path']} lines {page['line_start']}-{page['line_end']}", "```text"])
+        lines.extend(page.get("content_lines", []))
+        lines.append("```")
+    lines.extend(["", "## Page Trace Notes", "- See `page_trace.json` and `code_pages.json`."])
+    markdown_path = output_root / "code_doc.md"
+    write_text(markdown_path, "\n".join(lines) + "\n")
+    write_json(output_root / "code_pages.json", page_payload)
     write_json(output_root / "page_trace.json", {"pages": page_trace})
+    rendered = render_optional_outputs(markdown_path, formats)
+    write_text(output_root / "code_doc_report.md", "# Code Doc Report\n\n- Draft source-code evidence was generated from current scan candidates.\n- Review file selection before formal use.\n- Optional rendered outputs: " + (", ".join(f"`{item}`" for item in rendered) if rendered else "None") + "\n")
+    return page_payload
 
 
-def manual(repo_root: Path) -> None:
+def _build_code_pages(repo_root: Path, selected: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    pages: list[dict[str, Any]] = []
+    page_number = 1
+    for item in selected:
+        rel = item.get("path", "")
+        path = repo_root / rel
+        if not rel or not path.exists():
+            continue
+        effective_lines = _effective_source_lines(path)
+        for chunk in _chunks(effective_lines, CODE_LINES_PER_PAGE):
+            if not chunk:
+                continue
+            pages.append(
+                {
+                    "page": page_number,
+                    "path": rel,
+                    "line_start": chunk[0][0],
+                    "line_end": chunk[-1][0],
+                    "effective_line_count": len(chunk),
+                    "source_ref": f"{rel}#L{chunk[0][0]}-L{chunk[-1][0]}",
+                    "content_lines": [text for _, text in chunk],
+                }
+            )
+            page_number += 1
+    return pages
+
+
+def _effective_source_lines(path: Path) -> list[tuple[int, str]]:
+    lines: list[tuple[int, str]] = []
+    for number, raw_line in enumerate(path.read_text(encoding="utf-8", errors="ignore").splitlines(), start=1):
+        line = raw_line.rstrip()
+        stripped = line.strip()
+        if stripped and not stripped.startswith(("#", "//", "/*", "*", "*/", "--")):
+            lines.append((number, line))
+    return lines
+
+
+def _chunks(items: list[Any], size: int) -> list[list[Any]]:
+    return [items[index : index + size] for index in range(0, len(items), size)]
+
+
+def _select_page_window(candidate_pages: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    if len(candidate_pages) <= 60:
+        return candidate_pages
+    return candidate_pages[:30] + candidate_pages[-30:]
+
+
+def manual(repo_root: Path, formats: list[str] | None = None) -> dict[str, Any]:
     ensure_output_dirs(repo_root)
+    formats = normalize_formats(formats)
     project_facts = load_yaml(repo_root / "softcopy" / "project_facts.yaml", {})
     fmap = load_yaml(repo_root / "softcopy" / "feature_map.yaml", {})
     doc_type = _infer_doc_type(project_facts)
@@ -540,14 +621,61 @@ def manual(repo_root: Path) -> None:
         write_yaml(manifest_path, stub)
         manifest = stub
     write_text(output_root / "manual_outline.md", "# Manual Outline\n\n" + "\n".join(f"- `{item['section_id']}` {item['title']}" for item in sections) + "\n")
-    lines = ["# Manual Draft", "", f"- manifest_status: `{manifest.get('manifest_status', 'pending_review')}`", "", "## Sections"]
-    for section in manifest.get("sections", []):
-        lines.extend([f"### {section.get('title', '')}", f"- Goal: {section.get('goal', '')}", f"- Prerequisites: {section.get('prerequisites', []) or 'None'}", f"- Steps: {section.get('steps', []) or 'None'}", f"- Expected result: {section.get('expected_result', '') or 'None'}"])
-    if not manifest.get("sections"):
+    pages = _build_manual_pages(manifest)
+    page_payload = {
+        "page_size_effective_lines": MANUAL_LINES_PER_PAGE,
+        "total_candidate_pages": len(pages),
+        "selected_pages": [item["page"] for item in pages],
+        "pages": pages,
+    }
+    lines = ["# Manual Draft", "", f"- manifest_status: `{manifest.get('manifest_status', 'pending_review')}`", "", "## Paged Manual Material"]
+    for page in pages:
+        lines.extend([f"### Page {page['page']}: {page['section_id']}"])
+        lines.extend(page["content_lines"])
+    if not pages:
         lines.append("- None")
-    write_text(output_root / "manual.md", "\n".join(lines) + "\n")
-    write_text(output_root / "manual_report.md", "# Manual Report\n\n- Draft manual was generated from the current manifest.\n- Fill real steps and screenshot references before formal use.\n")
-    write_json(output_root / "manual_trace.json", {"sections": [{"section_id": section.get("section_id", ""), "sources": [{"source_type": "manual_manifest", "source_ref": f"softcopy/manual_manifest.yaml#/sections/{section.get('section_id', '')}", "authority_level": "B", "confidence": 0.9}]} for section in manifest.get("sections", [])], "screenshots": manifest.get("screenshots", [])})
+    markdown_path = output_root / "manual.md"
+    write_text(markdown_path, "\n".join(lines) + "\n")
+    write_json(output_root / "manual_pages.json", page_payload)
+    write_json(output_root / "manual_trace.json", {"sections": [{"section_id": section.get("section_id", ""), "sources": [{"source_type": "manual_manifest", "source_ref": f"softcopy/manual_manifest.yaml#/sections/{section.get('section_id', '')}", "authority_level": "B", "confidence": 0.9}]} for section in manifest.get("sections", [])], "screenshots": manifest.get("screenshots", []), "pages": pages})
+    rendered = render_optional_outputs(markdown_path, formats)
+    write_text(output_root / "manual_report.md", "# Manual Report\n\n- Draft manual was generated from the current manifest.\n- Fill real steps and screenshot references before formal use.\n- Optional rendered outputs: " + (", ".join(f"`{item}`" for item in rendered) if rendered else "None") + "\n")
+    return page_payload
+
+
+def _build_manual_pages(manifest: dict[str, Any]) -> list[dict[str, Any]]:
+    candidate_lines: list[tuple[str, str]] = []
+    for section in manifest.get("sections", []):
+        section_id = section.get("section_id", "")
+        candidate_lines.append((section_id, f"Section {section_id}: {section.get('title', '')}"))
+        candidate_lines.append((section_id, f"Goal: {section.get('goal', '')}"))
+        for item in section.get("prerequisites", []):
+            candidate_lines.append((section_id, f"Prerequisite: {item}"))
+        for index, item in enumerate(section.get("steps", []), start=1):
+            candidate_lines.append((section_id, f"Step {index}: {item}"))
+        candidate_lines.append((section_id, f"Expected result: {section.get('expected_result', '')}"))
+        for item in section.get("notes", []):
+            candidate_lines.append((section_id, f"Note: {item}"))
+        for item in section.get("screenshot_ids", []):
+            candidate_lines.append((section_id, f"Screenshot reference: {item}"))
+
+    pages: list[dict[str, Any]] = []
+    for index, chunk in enumerate(_chunks(candidate_lines, MANUAL_LINES_PER_PAGE), start=1):
+        if not chunk:
+            continue
+        section_ids = sorted({item[0] for item in chunk if item[0]})
+        pages.append(
+            {
+                "page": index,
+                "section_id": ",".join(section_ids),
+                "line_start": (index - 1) * MANUAL_LINES_PER_PAGE + 1,
+                "line_end": (index - 1) * MANUAL_LINES_PER_PAGE + len(chunk),
+                "effective_line_count": len(chunk),
+                "source_ref": "softcopy/manual_manifest.yaml#/sections",
+                "content_lines": [item[1] for item in chunk],
+            }
+        )
+    return _select_page_window(pages)
 
 
 def _infer_doc_type(project_facts: dict[str, Any]) -> str:
@@ -568,8 +696,11 @@ def validate(repo_root: Path) -> dict[str, Any]:
     project_facts = load_yaml(repo_root / "softcopy" / "project_facts.yaml", {})
     required_facts = load_yaml(repo_root / "softcopy" / "contracts" / "required_facts.yaml", {})
     fmap = load_yaml(repo_root / "softcopy" / "feature_map.yaml", {})
+    manual_manifest = load_yaml(repo_root / "softcopy" / "manual_manifest.yaml", {})
     ownership = load_yaml(repo_root / "softcopy" / "ownership_evidence.yaml", {})
     application_fields = load_json(repo_root / "softcopy" / "outputs" / "application" / "application_fields.json", {})
+    code_pages = load_json(repo_root / "softcopy" / "outputs" / "code_doc" / "code_pages.json", {})
+    manual_pages = load_json(repo_root / "softcopy" / "outputs" / "manual" / "manual_pages.json", {})
     rules = load_yaml(repo_root / "softcopy" / "rules" / "registration_rules.yaml", {})
     errors: list[dict[str, str]] = []
     warnings: list[dict[str, str]] = []
@@ -577,12 +708,12 @@ def validate(repo_root: Path) -> dict[str, Any]:
     _validate_required(project_facts, required_facts, errors)
     _validate_application_alignment(project_facts, application_fields, errors)
     _validate_traceability(application_fields, errors, warnings)
-    if application_fields.get("draft_mode") == "formal" and fmap.get("review_status") != "approved":
-        errors.append(_error("feature_map_not_approved_for_formal", "Feature map must be approved for formal readiness.", "softcopy/feature_map.yaml#/review_status"))
-    _validate_ownership(project_facts, ownership, errors)
+    _validate_review_gates(fmap, manual_manifest, application_fields, errors)
+    _validate_ownership(repo_root, project_facts, ownership, errors)
     active, rule_warnings, rule_infos = _active_rules(rules, project_facts.get("filing_context", {}))
     warnings.extend(rule_warnings)
     infos.extend(rule_infos)
+    _validate_page_rules(active, code_pages, manual_pages, errors, infos)
     if not active:
         infos.append(_info("no_active_page_rules", "No active page-format rules are currently enforced.", "softcopy/rules/registration_rules.yaml"))
     else:
@@ -631,20 +762,47 @@ def _validate_traceability(fields: dict[str, Any], errors: list[dict[str, str]],
     for index, item in enumerate(fields.get("main_functions", [])):
         if not item.get("sources"):
             errors.append(_error("main_function_not_traceable", "Application main function is missing evidence.", f"softcopy/outputs/application/application_fields.json#/main_functions/{index}"))
+        elif item.get("status") == "candidate" and fields.get("draft_mode") == "formal":
+            errors.append(_error("formal_main_function_candidate_only", "Formal application main function cannot rely on scan candidate evidence.", f"softcopy/outputs/application/application_fields.json#/main_functions/{index}"))
         elif item.get("status") == "candidate":
             warnings.append(_warning("main_function_candidate_only", "Application main function still relies on candidate evidence.", f"softcopy/outputs/application/application_fields.json#/main_functions/{index}"))
 
 
-def _validate_ownership(project_facts: dict[str, Any], ownership: dict[str, Any], errors: list[dict[str, str]]) -> None:
+def _validate_review_gates(fmap: dict[str, Any], manual_manifest: dict[str, Any], application_fields: dict[str, Any], errors: list[dict[str, str]]) -> None:
+    if fmap.get("review_status") != "approved":
+        errors.append(_error("feature_map_not_approved_for_readiness", "Feature map must be approved before ready-to-submit.", "softcopy/feature_map.yaml#/review_status"))
+    if not fmap.get("features"):
+        errors.append(_error("feature_map_empty_for_readiness", "Feature map must contain approved feature evidence before ready-to-submit.", "softcopy/feature_map.yaml#/features"))
+    if manual_manifest.get("manifest_status") != "approved":
+        errors.append(_error("manual_manifest_not_approved_for_readiness", "Manual manifest must be approved before ready-to-submit.", "softcopy/manual_manifest.yaml#/manifest_status"))
+    if not manual_manifest.get("sections"):
+        errors.append(_error("manual_manifest_empty_for_readiness", "Manual manifest must contain reviewed sections before ready-to-submit.", "softcopy/manual_manifest.yaml#/sections"))
+    if application_fields.get("draft_mode") == "formal" and fmap.get("review_status") != "approved":
+        errors.append(_error("feature_map_not_approved_for_formal", "Feature map must be approved for formal readiness.", "softcopy/feature_map.yaml#/review_status"))
+
+
+def _validate_ownership(repo_root: Path, project_facts: dict[str, Any], ownership: dict[str, Any], errors: list[dict[str, str]]) -> None:
     mode = project_facts.get("facts", {}).get("development_mode", {}).get("value", "")
+    if ownership.get("evidence_status") != "approved":
+        errors.append(_error("ownership_evidence_not_approved_for_readiness", "Ownership evidence must be approved before ready-to-submit.", "softcopy/ownership_evidence.yaml#/evidence_status"))
     if not ownership.get("required_documents"):
         errors.append(_error("ownership_evidence_not_reviewed", "Ownership evidence checklist has not been reviewed into canonical ownership_evidence.yaml.", "softcopy/ownership_evidence.yaml#/required_documents"))
         return
     if ownership.get("development_mode") and mode and ownership.get("development_mode") != mode:
         errors.append(_error("ownership_development_mode_mismatch", "Ownership evidence development mode does not match project facts.", "softcopy/ownership_evidence.yaml#/development_mode"))
     for index, item in enumerate(ownership.get("required_documents", [])):
-        if item.get("required") and not item.get("provided"):
-            errors.append(_error("required_ownership_document_missing", f"Required ownership document `{item.get('name', '')}` is missing.", f"softcopy/ownership_evidence.yaml#/required_documents/{index}"))
+        if item.get("required"):
+            if not item.get("provided"):
+                errors.append(_error("required_ownership_document_missing", f"Required ownership document `{item.get('name', '')}` is missing.", f"softcopy/ownership_evidence.yaml#/required_documents/{index}"))
+            file_ref = item.get("file_ref", "")
+            if not file_ref:
+                errors.append(_error("required_ownership_document_file_ref_missing", f"Required ownership document `{item.get('name', '')}` must include file_ref.", f"softcopy/ownership_evidence.yaml#/required_documents/{index}/file_ref"))
+            elif not _is_external_ref(file_ref) and not (repo_root / file_ref).exists():
+                errors.append(_error("required_ownership_document_file_not_found", f"Required ownership document file `{file_ref}` was not found.", f"softcopy/ownership_evidence.yaml#/required_documents/{index}/file_ref"))
+
+
+def _is_external_ref(value: str) -> bool:
+    return value.startswith(("http://", "https://", "app://"))
 
 
 REQUIRED_RULE_FIELDS = ["rule_id", "rule_status", "severity_default", "authority_level", "source_type", "source_name", "source_ref", "source_locator", "jurisdiction", "scope_level", "effective_version", "effective_from", "last_reviewed_at", "reviewed_by"]
@@ -677,6 +835,49 @@ def _active_rules(rules: dict[str, Any], filing_context: dict[str, Any]) -> tupl
                 continue
         active.append(rule)
     return active, warnings, infos
+
+
+def _validate_page_rules(active_rules: list[dict[str, Any]], code_pages: dict[str, Any], manual_pages: dict[str, Any], errors: list[dict[str, str]], infos: list[dict[str, str]]) -> None:
+    for rule in active_rules:
+        applies_to = set(rule.get("applies_to", []))
+        title = rule.get("title", "")
+        threshold = rule.get("threshold", {})
+        if "code_doc" in applies_to and title == "source_code_document_page_window":
+            _validate_page_window("code_doc", rule, code_pages, errors)
+        elif "code_doc" in applies_to and title == "source_code_lines_per_page":
+            _validate_min_lines("code_doc", rule, code_pages, threshold.get("min_lines_per_page", CODE_LINES_PER_PAGE), errors)
+        elif "manual_doc" in applies_to and title == "documentation_page_window":
+            _validate_page_window("manual_doc", rule, manual_pages, errors)
+        elif "manual_doc" in applies_to and title == "documentation_lines_per_page":
+            _validate_min_lines("manual_doc", rule, manual_pages, threshold.get("min_lines_per_page", MANUAL_LINES_PER_PAGE), errors)
+        elif "printed_materials" in applies_to:
+            infos.append(_info("printed_material_rule_not_machine_checked", f"Rule `{rule.get('rule_id', '')}` is active but only checked during rendered/printed review.", "softcopy/rules/registration_rules.yaml"))
+
+
+def _validate_page_window(kind: str, rule: dict[str, Any], pages_payload: dict[str, Any], errors: list[dict[str, str]]) -> None:
+    pages = pages_payload.get("pages", [])
+    if not pages:
+        errors.append(_error(f"{kind}_pages_missing", f"{kind} pages are missing for rule `{rule.get('rule_id', '')}`.", f"softcopy/outputs/{'code_doc' if kind == 'code_doc' else 'manual'}/{kind.split('_')[0]}_pages.json"))
+        return
+    total = pages_payload.get("total_candidate_pages", len(pages))
+    threshold = rule.get("threshold", {})
+    fallback = threshold.get("fallback_if_total_lt", 60)
+    front = threshold.get("front_pages", 30)
+    back = threshold.get("back_pages", 30)
+    expected = list(range(1, total + 1)) if total <= fallback else list(range(1, front + 1)) + list(range(total - back + 1, total + 1))
+    actual = pages_payload.get("selected_pages", [item.get("page") for item in pages])
+    if actual != expected:
+        errors.append(_error(f"{kind}_page_window_mismatch", f"{kind} selected pages do not satisfy rule `{rule.get('rule_id', '')}`.", f"softcopy/outputs/{'code_doc' if kind == 'code_doc' else 'manual'}"))
+
+
+def _validate_min_lines(kind: str, rule: dict[str, Any], pages_payload: dict[str, Any], min_lines: int, errors: list[dict[str, str]]) -> None:
+    pages = pages_payload.get("pages", [])
+    if not pages:
+        errors.append(_error(f"{kind}_pages_missing", f"{kind} pages are missing for rule `{rule.get('rule_id', '')}`.", f"softcopy/outputs/{'code_doc' if kind == 'code_doc' else 'manual'}"))
+        return
+    for page in pages:
+        if page.get("effective_line_count", 0) < min_lines:
+            errors.append(_error(f"{kind}_page_too_short", f"{kind} page {page.get('page')} has fewer than {min_lines} effective lines for rule `{rule.get('rule_id', '')}`.", f"softcopy/outputs/{'code_doc' if kind == 'code_doc' else 'manual'}#/pages/{page.get('page')}"))
 
 
 def _render_validation_report(summary: dict[str, Any], errors: list[dict[str, str]], warnings: list[dict[str, str]], infos: list[dict[str, str]]) -> str:
@@ -749,17 +950,170 @@ def _info(code: str, message: str, path: str) -> dict[str, str]:
     return {"code": code, "message": message, "path": path, "severity": "INFO"}
 
 
-def run_all(repo_root: Path) -> None:
+def run_all(repo_root: Path, formats: list[str] | None = None) -> dict[str, Any]:
+    formats = normalize_formats(formats)
     ensure_output_dirs(repo_root)
     scan(repo_root)
     intake(repo_root)
     feature_map(repo_root)
     proof_check(repo_root)
-    manual(repo_root)
+    manual(repo_root, formats=formats)
     application(repo_root)
-    code_doc(repo_root)
-    validate(repo_root)
+    code_doc(repo_root, formats=formats)
+    return validate(repo_root)
 
 
 def clean(repo_root: Path) -> None:
     clean_outputs_dir(repo_root)
+
+
+def evals(repo_root: Path) -> dict[str, Any]:
+    ensure_output_dirs(repo_root)
+    cases = [
+        _eval_default_failure(repo_root),
+        _eval_approved_ready(repo_root),
+        _eval_core_fact_status_block(repo_root),
+        _eval_published_date_required(repo_root),
+        _eval_rule_provenance_downgrade(repo_root),
+        _eval_manual_pending_blocks(repo_root),
+    ]
+    passed = [case for case in cases if case["passed"]]
+    failed = [case for case in cases if not case["passed"]]
+    report = {"passed": len(passed), "failed": len(failed), "cases": cases}
+    output_root = repo_root / "softcopy" / "outputs" / "validation"
+    write_json(output_root / "eval_report.json", report)
+    write_text(output_root / "eval_report.md", _render_eval_report(report))
+    return report
+
+
+def _eval_project(repo_root: Path) -> Path:
+    source = repo_root / "examples" / "minimal-project"
+    if not source.exists():
+        raise RuntimeError("Eval fixture missing: examples/minimal-project")
+    temp_root = Path(tempfile.mkdtemp(prefix="softcopy-eval-"))
+    target = temp_root / "minimal-project"
+    shutil.copytree(source, target)
+    init_project(target)
+    return target
+
+
+def _apply_approved_demo_bundle(project: Path) -> None:
+    docs = project / "docs"
+    shutil.copy2(docs / "project_facts.confirmed.example.yaml", project / "softcopy" / "project_facts.yaml")
+    shutil.copy2(docs / "feature_map.approved.example.yaml", project / "softcopy" / "feature_map.yaml")
+    shutil.copy2(docs / "manual_manifest.approved.example.yaml", project / "softcopy" / "manual_manifest.yaml")
+    shutil.copy2(docs / "ownership_evidence.approved.example.yaml", project / "softcopy" / "ownership_evidence.yaml")
+
+
+def _eval_case(name: str, check: Any) -> dict[str, Any]:
+    try:
+        detail = check()
+        return {"name": name, "passed": True, "detail": detail}
+    except Exception as exc:
+        return {"name": name, "passed": False, "detail": str(exc)}
+
+
+def _eval_default_failure(repo_root: Path) -> dict[str, Any]:
+    def check() -> str:
+        project = _eval_project(repo_root)
+        result = run_all(project, formats=["md"])
+        codes = {item["code"] for item in result["errors"]}
+        if result["ready"] or "core_required_fact_not_confirmed" not in codes:
+            raise AssertionError("Default fixture must fail on unconfirmed core facts.")
+        return "default fixture failed as expected"
+
+    return _eval_case("default_facts_fail", check)
+
+
+def _eval_approved_ready(repo_root: Path) -> dict[str, Any]:
+    def check() -> str:
+        project = _eval_project(repo_root)
+        _apply_approved_demo_bundle(project)
+        result = run_all(project, formats=["md"])
+        if not result["ready"]:
+            raise AssertionError(f"Approved fixture did not become ready: {result['errors']}")
+        if not (project / "softcopy" / "outputs" / "package" / "READY_TO_SUBMIT.flag").exists():
+            raise AssertionError("READY_TO_SUBMIT.flag missing.")
+        return "approved fixture is ready"
+
+    return _eval_case("approved_bundle_ready", check)
+
+
+def _eval_core_fact_status_block(repo_root: Path) -> dict[str, Any]:
+    def check() -> str:
+        project = _eval_project(repo_root)
+        _apply_approved_demo_bundle(project)
+        facts_path = project / "softcopy" / "project_facts.yaml"
+        facts = load_yaml(facts_path, {})
+        facts["facts"]["version"]["status"] = "derived"
+        write_yaml(facts_path, facts)
+        run_all(project, formats=["md"])
+        result = validate(project)
+        if "core_required_fact_not_confirmed" not in {item["code"] for item in result["errors"]}:
+            raise AssertionError("Derived core fact was not blocked.")
+        return "derived core fact blocked"
+
+    return _eval_case("core_fact_status_block", check)
+
+
+def _eval_published_date_required(repo_root: Path) -> dict[str, Any]:
+    def check() -> str:
+        project = _eval_project(repo_root)
+        _apply_approved_demo_bundle(project)
+        facts_path = project / "softcopy" / "project_facts.yaml"
+        facts = load_yaml(facts_path, {})
+        facts["facts"]["first_publication_status"]["value"] = "published"
+        facts["facts"]["first_publication_date"]["status"] = "needs_confirmation"
+        write_yaml(facts_path, facts)
+        run_all(project, formats=["md"])
+        result = validate(project)
+        if "conditional_required_fact_not_confirmed" not in {item["code"] for item in result["errors"]}:
+            raise AssertionError("Published-path first publication date was not required.")
+        return "published date condition enforced"
+
+    return _eval_case("published_date_required", check)
+
+
+def _eval_rule_provenance_downgrade(repo_root: Path) -> dict[str, Any]:
+    def check() -> str:
+        project = _eval_project(repo_root)
+        _apply_approved_demo_bundle(project)
+        run_all(project, formats=["md"])
+        rules_path = project / "softcopy" / "rules" / "registration_rules.yaml"
+        rules = load_yaml(rules_path, {})
+        rules["rules"][0]["source_ref"] = ""
+        write_yaml(rules_path, rules)
+        result = validate(project)
+        warnings = {item["code"] for item in result["warnings"]}
+        if "rule_provenance_incomplete" not in warnings:
+            raise AssertionError("Missing rule provenance did not downgrade to warning.")
+        if any(item.get("code") == "rule_provenance_incomplete" and item.get("severity") == "ERROR" for item in result["errors"]):
+            raise AssertionError("Incomplete provenance produced hard error.")
+        return "incomplete rule provenance downgraded"
+
+    return _eval_case("rule_provenance_downgrade", check)
+
+
+def _eval_manual_pending_blocks(repo_root: Path) -> dict[str, Any]:
+    def check() -> str:
+        project = _eval_project(repo_root)
+        _apply_approved_demo_bundle(project)
+        manifest_path = project / "softcopy" / "manual_manifest.yaml"
+        manifest = load_yaml(manifest_path, {})
+        manifest["manifest_status"] = "pending_review"
+        write_yaml(manifest_path, manifest)
+        run_all(project, formats=["md"])
+        result = validate(project)
+        if "manual_manifest_not_approved_for_readiness" not in {item["code"] for item in result["errors"]}:
+            raise AssertionError("Pending manual manifest did not block readiness.")
+        return "pending manual manifest blocked"
+
+    return _eval_case("manual_pending_blocks", check)
+
+
+def _render_eval_report(report: dict[str, Any]) -> str:
+    lines = ["# Eval Report", "", f"- Passed: {report['passed']}", f"- Failed: {report['failed']}", "", "## Cases"]
+    for case in report["cases"]:
+        status = "PASS" if case["passed"] else "FAIL"
+        lines.append(f"- `{status}` {case['name']}: {case['detail']}")
+    return "\n".join(lines) + "\n"

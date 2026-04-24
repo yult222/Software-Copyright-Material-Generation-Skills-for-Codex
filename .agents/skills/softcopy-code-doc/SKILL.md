@@ -23,17 +23,19 @@ Create source-code evidence selections and rendered materials.
 
 - `softcopy/outputs/code_doc/code_selection.yaml`
 - `softcopy/outputs/code_doc/code_doc.md`
+- `softcopy/outputs/code_doc/code_pages.json`
 - `softcopy/outputs/code_doc/code_doc_report.md`
 - `softcopy/outputs/code_doc/page_trace.json`
 
 ## Optional outputs
 
 - `softcopy/outputs/code_doc/code_doc.pdf`
+- `softcopy/outputs/code_doc/code_doc.docx`
 
 ## Hard rules
 
 - Prefer core business files, not tests or third-party code
-- Every page must be traceable to concrete files
+- Every page must trace `path`, line range, effective line count, and source ref
 - Page rules come only from active `registration_rules.yaml` entries
 
 ## Workflow summary
@@ -41,4 +43,3 @@ Create source-code evidence selections and rendered materials.
 1. Select candidate files from scan and feature map.
 2. Paginate code excerpts.
 3. Render material and page trace files.
-

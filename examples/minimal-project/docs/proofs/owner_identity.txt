@@ -1,0 +1,3 @@
+Demo-only identity evidence fixture.
+
+This file is not a real identity document. It exists only so SoftCopy evals can verify that required proof file references resolve to a concrete repository path.

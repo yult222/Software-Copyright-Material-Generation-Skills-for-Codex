@@ -55,8 +55,10 @@
         },
         "additionalProperties": true
       }
+    },
+    "notes": {
+      "type": "string"
     }
   },
   "additionalProperties": false
 }
-

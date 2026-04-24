@@ -25,6 +25,9 @@ The repository currently includes:
 - rules
 - schemas
 - skill boundaries
-- first runnable scripts for scan, application draft, and validation
-- draft placeholders for later-phase code-doc and manual pipelines
-
+- shared `softcopy_tool` CLI and workflow implementation
+- migration-safe `init`
+- repository scan, intake, feature map, proof check, application, code-doc, manual, validation, clean, and eval commands
+- code/manual page trace generation
+- optional PDF/DOCX rendering through extras
+- strict readiness gate for confirmed facts, approved feature/manual/proof evidence, traceability, and active rule provenance
