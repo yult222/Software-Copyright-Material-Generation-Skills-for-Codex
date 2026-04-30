@@ -30,7 +30,11 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     if args.command == "init":
         report = workflow.init_project(Path(args.target))
-        print(f"initialized target={report['target']} copied={len(report['copied'])} conflicts={len(report['conflicts'])}")
+        print(
+            f"initialized target={report['target']} "
+            f"copied={len(report['copied'])} "
+            f"conflicts={len(report['conflicts'])}"
+        )
         return 0
 
     repo_root = Path(args.repo_root).resolve()
@@ -54,7 +58,6 @@ def main(argv: list[str] | None = None) -> int:
             result = dispatch[args.command](repo_root)
     except (RenderDependencyError, ValueError) as exc:
         parser.error(str(exc))
-        return 2
     if args.command == "validate" and isinstance(result, dict):
         print(f"errors={len(result['errors'])} warnings={len(result['warnings'])} ready={result['ready']}")
     else:

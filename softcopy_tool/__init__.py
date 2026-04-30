@@ -1,3 +1,15 @@
 """SoftCopy Skill Pack command-line support."""
 
-__version__ = "0.1.0"
+from __future__ import annotations
+
+from importlib.metadata import PackageNotFoundError, version
+
+
+def _version() -> str:
+    try:
+        return version("softcopy-codex-skill-pack")
+    except PackageNotFoundError:
+        return "0+unknown"
+
+
+__version__ = _version()

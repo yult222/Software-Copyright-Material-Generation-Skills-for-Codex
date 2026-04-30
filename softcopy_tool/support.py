@@ -5,9 +5,10 @@ from __future__ import annotations
 import csv
 import json
 import shutil
-import subprocess
 from pathlib import Path
 from typing import Any, Iterable
+
+import yaml
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -44,40 +45,15 @@ def write_json(path: Path, data: Any) -> None:
 
 
 def read_yaml(path: Path) -> Any:
-    ruby = r"""
-require "yaml"
-require "json"
-path = ARGV[0]
-data = YAML.safe_load(File.read(path), aliases: true)
-puts JSON.generate(data)
-"""
-    result = subprocess.run(
-        ["ruby", "-e", ruby, str(path)],
-        capture_output=True,
-        text=True,
-        check=True,
-    )
-    if not result.stdout.strip():
-        return None
-    return json.loads(result.stdout)
+    return yaml.safe_load(path.read_text(encoding="utf-8"))
 
 
 def write_yaml(path: Path, data: Any) -> None:
-    ruby = r"""
-require "yaml"
-require "json"
-data = JSON.parse(STDIN.read)
-puts YAML.dump(data)
-"""
     ensure_parent(path)
-    result = subprocess.run(
-        ["ruby", "-e", ruby],
-        input=json.dumps(data, ensure_ascii=False),
-        capture_output=True,
-        text=True,
-        check=True,
+    path.write_text(
+        yaml.safe_dump(data, allow_unicode=True, sort_keys=False),
+        encoding="utf-8",
     )
-    path.write_text(result.stdout, encoding="utf-8")
 
 
 def write_csv(path: Path, rows: Iterable[dict[str, Any]], fieldnames: list[str]) -> None:

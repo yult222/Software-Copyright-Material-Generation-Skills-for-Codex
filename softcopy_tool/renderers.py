@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 
@@ -40,28 +41,87 @@ def _render_pdf(path: Path, text: str) -> None:
         from reportlab.lib.pagesizes import A4
         from reportlab.pdfgen import canvas
     except ImportError as exc:
-        raise RenderDependencyError("PDF rendering requires optional dependency `reportlab`. Install with `python3 -m pip install '.[render]'`.") from exc
+        raise RenderDependencyError(
+            "PDF rendering requires optional dependency `reportlab`. "
+            "Install with `python3 -m pip install '.[render]'`."
+        ) from exc
 
     path.parent.mkdir(parents=True, exist_ok=True)
+    font_name = _register_pdf_font()
     pdf = canvas.Canvas(str(path), pagesize=A4)
-    width, height = A4
+    _, height = A4
     x = 48
     y = height - 48
+    pdf.setFont(font_name, 10)
     for line in text.splitlines():
         if y < 48:
             pdf.showPage()
+            pdf.setFont(font_name, 10)
             y = height - 48
-        safe = line.encode("latin-1", "replace").decode("latin-1")
-        pdf.drawString(x, y, safe[:120])
+        pdf.drawString(x, y, line[:120])
         y -= 14
     pdf.save()
+
+
+def _register_pdf_font() -> str:
+    try:
+        from reportlab.pdfbase import pdfmetrics
+        from reportlab.pdfbase.cidfonts import UnicodeCIDFont
+        from reportlab.pdfbase.ttfonts import TTFont
+    except ImportError as exc:
+        raise RenderDependencyError(
+            "PDF rendering requires optional dependency `reportlab`. "
+            "Install with `python3 -m pip install '.[render]'`."
+        ) from exc
+
+    configured = os.environ.get("SOFTCOPY_CJK_FONT")
+    if configured:
+        font_path = Path(configured).expanduser()
+        if not font_path.exists():
+            raise RenderDependencyError(f"Configured CJK font does not exist: {font_path}")
+        try:
+            pdfmetrics.registerFont(TTFont("SoftCopyCJK", str(font_path)))
+            return "SoftCopyCJK"
+        except Exception as exc:
+            raise RenderDependencyError(f"Could not load configured CJK font: {font_path}") from exc
+
+    try:
+        pdfmetrics.registerFont(UnicodeCIDFont("STSong-Light"))
+        return "STSong-Light"
+    except Exception:
+        pass
+
+    for font_path in _candidate_cjk_font_paths():
+        if not font_path.exists():
+            continue
+        try:
+            pdfmetrics.registerFont(TTFont("SoftCopyCJK", str(font_path)))
+            return "SoftCopyCJK"
+        except Exception:
+            continue
+
+    raise RenderDependencyError(
+        "PDF rendering needs a CJK-capable font. Set SOFTCOPY_CJK_FONT=/path/to/font.ttf."
+    )
+
+
+def _candidate_cjk_font_paths() -> list[Path]:
+    return [
+        Path("/Library/Fonts/Arial Unicode.ttf"),
+        Path("/System/Library/Fonts/Supplemental/Arial Unicode.ttf"),
+        Path("/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttf"),
+        Path("/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttf"),
+    ]
 
 
 def _render_docx(path: Path, text: str) -> None:
     try:
         from docx import Document
     except ImportError as exc:
-        raise RenderDependencyError("DOCX rendering requires optional dependency `python-docx`. Install with `python3 -m pip install '.[render]'`.") from exc
+        raise RenderDependencyError(
+            "DOCX rendering requires optional dependency `python-docx`. "
+            "Install with `python3 -m pip install '.[render]'`."
+        ) from exc
 
     path.parent.mkdir(parents=True, exist_ok=True)
     document = Document()

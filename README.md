@@ -19,14 +19,15 @@ English: SoftCopy is a Codex-first skill pack with a portable Python CLI for pre
 
 ## Quickstart
 
-前置条件：Python 3.10+，以及系统 Ruby（用于安全解析 YAML，避免引入 PyYAML 依赖）。
+前置条件：Python 3.10+。YAML 解析使用 Python 依赖 PyYAML，安装包时会自动安装。
 
 ```bash
 git clone https://github.com/yult222/Software-Copyright-Material-Generation-Skills-for-Codex.git
 cd Software-Copyright-Material-Generation-Skills-for-Codex
+python3 -m pip install -e .
 
-python3 -m softcopy_tool init --target examples/minimal-project
-python3 -m softcopy_tool run-all --repo-root examples/minimal-project
+softcopy-tool init --target examples/minimal-project
+softcopy-tool run-all --repo-root examples/minimal-project
 sed -n '1,160p' examples/minimal-project/softcopy/outputs/validation/validation_report.md
 ```
 
@@ -88,7 +89,7 @@ python3 -m softcopy_tool validate --repo-root /path/to/your/repo
 
 ## 可选 PDF/DOCX 渲染
 
-默认只生成 Markdown/JSON，保持零外部 Python 依赖。需要 PDF/DOCX 时安装可选依赖：
+默认只生成 Markdown/JSON，除 PyYAML 外不需要渲染依赖。需要 PDF/DOCX 时安装可选依赖：
 
 ```bash
 python3 -m pip install '.[render]'
@@ -97,6 +98,8 @@ python3 -m softcopy_tool manual --repo-root /path/to/your/repo --formats md,pdf,
 ```
 
 未安装 extras 时，默认 `--formats md` 正常运行；显式请求 `pdf` 或 `docx` 会给出依赖安装提示并失败。
+
+PDF 渲染会优先使用 ReportLab 内置中文 CID 字体。也可以通过 `SOFTCOPY_CJK_FONT=/path/to/font.ttf` 指定字体。
 
 ## CLI 命令
 
