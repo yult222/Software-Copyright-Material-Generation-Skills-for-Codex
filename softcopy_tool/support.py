@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import csv
 import json
+from json import JSONDecodeError
 import shutil
 from pathlib import Path
 from typing import Any, Iterable
@@ -26,6 +27,10 @@ OUTPUT_DIRS = [
 ]
 
 
+class SoftCopyDataError(ValueError):
+    pass
+
+
 def ensure_parent(path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -36,7 +41,12 @@ def write_text(path: Path, content: str) -> None:
 
 
 def read_json(path: Path) -> Any:
-    return json.loads(path.read_text(encoding="utf-8"))
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except JSONDecodeError as exc:
+        raise SoftCopyDataError(f"Could not parse JSON file `{path}`: {exc.msg}.") from exc
+    except UnicodeDecodeError as exc:
+        raise SoftCopyDataError(f"Could not decode JSON file `{path}` as UTF-8.") from exc
 
 
 def write_json(path: Path, data: Any) -> None:
@@ -45,7 +55,12 @@ def write_json(path: Path, data: Any) -> None:
 
 
 def read_yaml(path: Path) -> Any:
-    return yaml.safe_load(path.read_text(encoding="utf-8"))
+    try:
+        return yaml.safe_load(path.read_text(encoding="utf-8"))
+    except yaml.YAMLError as exc:
+        raise SoftCopyDataError(f"Could not parse YAML file `{path}`: {exc}.") from exc
+    except UnicodeDecodeError as exc:
+        raise SoftCopyDataError(f"Could not decode YAML file `{path}` as UTF-8.") from exc
 
 
 def write_yaml(path: Path, data: Any) -> None:

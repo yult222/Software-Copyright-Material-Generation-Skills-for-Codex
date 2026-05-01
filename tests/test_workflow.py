@@ -77,6 +77,65 @@ class WorkflowContractTests(unittest.TestCase):
             workflow._page_artifact_path("unknown")
 
 
+class WorkflowOwnershipTests(unittest.TestCase):
+    def test_local_file_ref_must_stay_inside_repo_root(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            base = Path(temp_dir)
+            repo_root = base / "repo"
+            repo_root.mkdir()
+            outside = base / "outside.txt"
+            outside.write_text("secret", encoding="utf-8")
+            ownership = {
+                "evidence_status": "approved",
+                "required_documents": [
+                    {
+                        "required": True,
+                        "provided": True,
+                        "name": "Owner proof",
+                        "file_ref": "../outside.txt",
+                    }
+                ],
+            }
+            errors: list[dict[str, str]] = []
+
+            workflow._validate_ownership(
+                repo_root,
+                {"facts": {"development_mode": {"value": "original"}}},
+                ownership,
+                errors,
+            )
+
+            self.assertIn("required_ownership_document_file_ref_invalid", {item["code"] for item in errors})
+
+    def test_valid_local_file_ref_passes_existence_check(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repo_root = Path(temp_dir)
+            proof = repo_root / "docs" / "owner.txt"
+            proof.parent.mkdir()
+            proof.write_text("owner", encoding="utf-8")
+            ownership = {
+                "evidence_status": "approved",
+                "required_documents": [
+                    {
+                        "required": True,
+                        "provided": True,
+                        "name": "Owner proof",
+                        "file_ref": "docs/owner.txt",
+                    }
+                ],
+            }
+            errors: list[dict[str, str]] = []
+
+            workflow._validate_ownership(
+                repo_root,
+                {"facts": {"development_mode": {"value": "original"}}},
+                ownership,
+                errors,
+            )
+
+            self.assertEqual(errors, [])
+
+
 class WorkflowScanTests(unittest.TestCase):
     def test_scan_reads_each_source_file_once(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -101,6 +160,81 @@ class WorkflowScanTests(unittest.TestCase):
             self.assertEqual(read_counts, {first: 1, second: 1})
             self.assertIn("FastAPI", repo_scan["framework_signals"])
             self.assertEqual(repo_scan["detected_routes"][0]["route"], "/health")
+
+    def test_scan_reports_invalid_utf8_source_warning(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repo_root = Path(temp_dir)
+            source_dir = repo_root / "src"
+            source_dir.mkdir()
+            broken = source_dir / "bad.py"
+            broken.write_bytes(b"print('ok')\xff\n")
+
+            repo_scan = workflow.scan(repo_root)
+
+            self.assertEqual(
+                [item["code"] for item in repo_scan["warnings"]],
+                ["source_file_decode_replacement"],
+            )
+            report = repo_root / "softcopy" / "outputs" / "scan" / "repo_scan_report.md"
+            self.assertIn("source_file_decode_replacement", report.read_text(encoding="utf-8"))
+
+
+class WorkflowChineseMaterialTests(unittest.TestCase):
+    def test_formal_materials_use_chinese_titles(self) -> None:
+        repo_root = Path(__file__).resolve().parents[1]
+        with workflow._eval_project(repo_root) as project:
+            workflow._apply_approved_demo_bundle(project)
+            workflow.run_all(project, formats=["md"])
+
+            application = (
+                project / "softcopy" / "outputs" / "application" / "application_draft.md"
+            ).read_text(encoding="utf-8")
+            code_doc = (
+                project / "softcopy" / "outputs" / "code_doc" / "code_doc.md"
+            ).read_text(encoding="utf-8")
+            manual = (
+                project / "softcopy" / "outputs" / "manual" / "manual.md"
+            ).read_text(encoding="utf-8")
+
+        self.assertIn("# 软件著作权登记申请表草稿", application)
+        self.assertIn("# 源程序鉴别材料", code_doc)
+        self.assertIn("# 接口说明文档", manual)
+        combined = "\n".join([application, code_doc, manual])
+        self.assertNotIn("Application Draft", combined)
+        self.assertNotIn("Source Code Evidence Draft", combined)
+        self.assertNotIn("Manual Draft", combined)
+        self.assertNotIn("Describe how to use", combined)
+        self.assertNotIn("- None", combined)
+
+    def test_manual_stub_goal_is_chinese(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repo_root = Path(temp_dir)
+            softcopy = repo_root / "softcopy"
+            softcopy.mkdir()
+            workflow.write_yaml(
+                softcopy / "project_facts.yaml",
+                {"facts": {"project_type": {"value": "backend_service"}}},
+            )
+            workflow.write_yaml(
+                softcopy / "feature_map.yaml",
+                {
+                    "review_status": "approved",
+                    "features": [
+                        {
+                            "name": {"value": "数据查询"},
+                        }
+                    ],
+                },
+            )
+
+            workflow.manual(repo_root, formats=["md"])
+
+            stub = (
+                repo_root / "softcopy" / "outputs" / "manual" / "manual_manifest.stub.yaml"
+            ).read_text(encoding="utf-8")
+
+        self.assertIn("说明如何使用或调用", stub)
+        self.assertNotIn("Describe how to use", stub)
 
 
 if __name__ == "__main__":

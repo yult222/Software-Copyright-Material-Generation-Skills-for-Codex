@@ -1,14 +1,13 @@
-# Application Draft
+# 软件著作权登记申请表草稿
 
-## Basic Information
+## 基本信息
 
-## Main Functions Summary
+## 主要功能
 
-## Technical Characteristics Summary
+## 技术特点
 
-## Runtime and Deployment Environment
+## 运行和部署环境
 
-## Facts Needing Confirmation
+## 待确认事实
 
-## Traceability Notes
-
+## 追溯说明

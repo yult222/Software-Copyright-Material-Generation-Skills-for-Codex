@@ -1,16 +1,15 @@
-# Manual
+# 文档鉴别材料
 
-## Overview
+## 软件概述
 
-## Runtime Environment
+## 运行环境
 
-## Installation and Startup
+## 安装与启动
 
-## Functional Structure
+## 功能结构
 
-## Main Operation Steps
+## 主要操作步骤
 
-## Input and Output
+## 输入与输出
 
-## Notes and Exceptions
-
+## 注意事项与异常处理

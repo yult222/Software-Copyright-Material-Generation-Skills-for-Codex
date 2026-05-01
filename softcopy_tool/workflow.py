@@ -117,6 +117,45 @@ PAGE_ARTIFACTS = {
     "code_doc": "softcopy/outputs/code_doc/code_pages.json",
     "manual_doc": "softcopy/outputs/manual/manual_pages.json",
 }
+FIELD_LABELS = {
+    "software_name_full": "软件全称",
+    "software_name_short": "软件简称",
+    "version": "版本号",
+    "development_completion_date": "开发完成日期",
+    "first_publication_status": "首次发表状态",
+    "first_publication_date": "首次发表日期",
+    "copyright_owner_type": "著作权人类型",
+    "copyright_owners": "著作权人",
+    "development_mode": "开发方式",
+    "project_type": "项目类型",
+}
+STATUS_LABELS = {
+    "confirmed": "已确认",
+    "derived": "已推导",
+    "candidate": "候选",
+    "missing": "缺失",
+    "needs_confirmation": "待确认",
+    "not_applicable": "不适用",
+    "pending_review": "待审核",
+    "approved": "已审核",
+}
+DRAFT_MODE_LABELS = {
+    "formal": "正式草稿",
+    "provisional": "待补充事实的草稿",
+}
+DOC_TYPE_TITLES = {
+    "user_manual": "用户手册",
+    "api_manual": "接口说明文档",
+    "design_spec": "命令行使用说明",
+    "hybrid": "用户手册与接口说明文档",
+}
+RUNTIME_LABELS = {
+    "os": "操作系统",
+    "database": "数据库",
+    "middleware": "中间件",
+    "browser": "浏览器",
+    "other_dependencies": "其他依赖",
+}
 
 
 @dataclass(frozen=True)
@@ -127,6 +166,12 @@ class SourceFileAnalysis:
     text: str
     effective_code_lines: int
     routes: list[str]
+
+
+@dataclass(frozen=True)
+class SourceReadResult:
+    text: str
+    warning: dict[str, str] | None
 
 
 def envelope(
@@ -206,7 +251,7 @@ def iter_source_files(repo_root: Path) -> list[Path]:
 
 
 def count_effective_lines(path: Path) -> int:
-    return _count_effective_lines_in_text(path.read_text(encoding="utf-8", errors="ignore"))
+    return _count_effective_lines_in_text(path.read_text(encoding="utf-8"))
 
 
 def _count_effective_lines_in_text(text: str) -> int:
@@ -218,21 +263,41 @@ def _count_effective_lines_in_text(text: str) -> int:
     return count
 
 
-def _analyze_source_files(repo_root: Path, files: list[Path]) -> list[SourceFileAnalysis]:
+def _read_source_text(repo_root: Path, path: Path) -> SourceReadResult:
+    try:
+        return SourceReadResult(path.read_text(encoding="utf-8"), None)
+    except UnicodeDecodeError as exc:
+        text = path.read_bytes().decode("utf-8", errors="replace")
+        rel = str(path.relative_to(repo_root))
+        warning = _warning(
+            "source_file_decode_replacement",
+            f"`{rel}` contains invalid UTF-8 bytes; replacement characters were used for scan evidence.",
+            rel,
+        )
+        return SourceReadResult(text, warning)
+
+
+def _analyze_source_files(
+    repo_root: Path,
+    files: list[Path],
+) -> tuple[list[SourceFileAnalysis], list[dict[str, str]]]:
     analyses: list[SourceFileAnalysis] = []
+    warnings: list[dict[str, str]] = []
     for path in files:
-        text = path.read_text(encoding="utf-8", errors="ignore")
+        source = _read_source_text(repo_root, path)
+        if source.warning:
+            warnings.append(source.warning)
         analyses.append(
             SourceFileAnalysis(
                 path=path,
                 rel=str(path.relative_to(repo_root)),
                 language=LANGUAGE_BY_SUFFIX[path.suffix.lower()],
-                text=text,
-                effective_code_lines=_count_effective_lines_in_text(text),
-                routes=extract_routes(text),
+                text=source.text,
+                effective_code_lines=_count_effective_lines_in_text(source.text),
+                routes=extract_routes(source.text),
             )
         )
-    return analyses
+    return analyses, warnings
 
 
 def detect_frameworks(repo_root: Path, analyses: list[SourceFileAnalysis]) -> list[str]:
@@ -281,7 +346,7 @@ def extract_routes(text: str) -> list[str]:
 def scan(repo_root: Path) -> dict[str, Any]:
     ensure_output_dirs(repo_root)
     files = iter_source_files(repo_root)
-    analyses = _analyze_source_files(repo_root, files)
+    analyses, source_warnings = _analyze_source_files(repo_root, files)
     language_counter = Counter(analysis.language for analysis in analyses)
     code_inventory = [
         {
@@ -305,6 +370,7 @@ def scan(repo_root: Path) -> dict[str, Any]:
         "candidate_modules": modules,
         "candidate_core_files": _candidate_core_files(analyses),
         "detected_routes": detected_routes,
+        "warnings": source_warnings,
         "code_line_summary": {
             "total_files": len(code_inventory),
             "total_effective_code_lines": sum(item["effective_code_lines"] for item in code_inventory),
@@ -394,6 +460,14 @@ def _render_scan_report(repo_scan: dict[str, Any]) -> str:
                 [
                     f"- `{item['path']}` ({item['effective_code_lines']} lines)"
                     for item in repo_scan["candidate_core_files"]
+                ]
+            ),
+            "",
+            "## Warnings",
+            *lines(
+                [
+                    f"- `{item['code']}`: {item['message']}"
+                    for item in repo_scan.get("warnings", [])
                 ]
             ),
             "",
@@ -711,7 +785,7 @@ def _main_functions(fmap: dict[str, Any], repo_scan: dict[str, Any]) -> list[dic
         return results
     return [
         envelope(
-            f"Candidate module: {module['name']}",
+            f"候选模块：{module['name']}",
             "candidate",
             False,
             "softcopy-application",
@@ -756,53 +830,120 @@ def _application_trace(fields: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _display_value(value: Any) -> str:
+    if value in (None, "", [], {}):
+        return "待补充"
+    if isinstance(value, list):
+        if not value:
+            return "待补充"
+        if all(isinstance(item, dict) for item in value):
+            parts = []
+            for item in value:
+                name = item.get("name", "未命名著作权人")
+                id_type = item.get("id_type", "")
+                masked = item.get("id_number_masked", "")
+                suffix = "，".join(part for part in [id_type, masked] if part)
+                parts.append(f"{name}（{suffix}）" if suffix else str(name))
+            return "；".join(parts)
+        return "；".join(str(item) for item in value)
+    if isinstance(value, dict):
+        parts = []
+        for key, item in value.items():
+            label = RUNTIME_LABELS.get(str(key), str(key))
+            parts.append(f"{label}：{_display_value(item)}")
+        return "；".join(parts) if parts else "待补充"
+    return str(value)
+
+
+def _field_label(field: str) -> str:
+    return FIELD_LABELS.get(field, field)
+
+
+def _status_label(status: str) -> str:
+    return STATUS_LABELS.get(status, status or "缺失")
+
+
+def _draft_mode_label(mode: str) -> str:
+    return DRAFT_MODE_LABELS.get(mode, mode)
+
+
+def _doc_type_title(doc_type: str) -> str:
+    return DOC_TYPE_TITLES.get(doc_type, "文档鉴别材料")
+
+
+def _material_software_name(project_facts: dict[str, Any]) -> str:
+    return _display_value(project_facts.get("facts", {}).get("software_name_full", {}).get("value"))
+
+
+def _material_version(project_facts: dict[str, Any]) -> str:
+    return _display_value(project_facts.get("facts", {}).get("version", {}).get("value"))
+
+
 def _render_application(fields: dict[str, Any]) -> str:
     lines = [
-        "# Application Draft",
+        "# 软件著作权登记申请表草稿",
         "",
-        f"- Draft mode: `{fields['draft_mode']}`",
+        f"- 草稿状态：{_draft_mode_label(fields['draft_mode'])}",
         "",
-        "## Basic Information",
+        "## 基本信息",
     ]
     for field in APPLICATION_FIELDS:
-        lines.append(f"- `{field}`: `{fields[field]['value']}` (status: `{fields[field]['status']}`)")
-    lines.extend(["", "## Main Functions Summary"])
+        item = fields[field]
+        lines.append(
+            f"- {_field_label(field)}：{_display_value(item.get('value'))}"
+            f"（状态：{_status_label(item.get('status', 'missing'))}）"
+        )
+    lines.extend(["", "## 主要功能"])
     lines.extend(
-        [f"- {item['value']} (status: `{item['status']}`)" for item in fields["main_functions"]]
-        or ["- None"]
+        [
+            f"- {_display_value(item.get('value'))}"
+            f"（状态：{_status_label(item.get('status', 'missing'))}）"
+            for item in fields["main_functions"]
+        ]
+        or ["- 暂无内容，需补充后再用于正式提交。"]
     )
-    lines.extend(["", "## Technical Characteristics Summary"])
-    lines.extend([f"- {item}" for item in fields.get("technical_highlights", [])] or ["- None"])
-    lines.extend(["", "## Runtime and Deployment Environment"])
+    lines.extend(["", "## 技术特点"])
+    lines.extend(
+        [f"- {_display_value(item)}" for item in fields.get("technical_highlights", [])]
+        or ["- 暂无内容，需补充后再用于正式提交。"]
+    )
+    lines.extend(["", "## 运行和部署环境"])
     runtime = fields.get("runtime_environment", {})
-    lines.extend([f"- `{key}`: {value}" for key, value in runtime.items()] or ["- None"])
-    lines.extend(["", "## Facts Needing Confirmation"])
-    lines.extend([f"- `{field}`" for field in fields["needs_confirmation"]] or ["- None"])
-    lines.extend(["", "## Traceability Notes", "- See `application_trace.json`."])
+    lines.extend(
+        [f"- {RUNTIME_LABELS.get(str(key), str(key))}：{_display_value(value)}" for key, value in runtime.items()]
+        or ["- 暂无内容，需补充后再用于正式提交。"]
+    )
+    lines.extend(["", "## 待确认事实"])
+    lines.extend(
+        [f"- {_field_label(field)}" for field in fields["needs_confirmation"]]
+        or ["- 无。"]
+    )
+    lines.extend(["", "## 追溯说明", "- 字段来源和证据链见 `application_trace.json`。"])
     return "\n".join(lines) + "\n"
 
 
 def _render_application_checklist(fields: dict[str, Any]) -> str:
     lines = [
-        "# Application Review Checklist",
+        "# 申请表草稿审查清单",
         "",
-        f"- [ ] Draft mode `{fields['draft_mode']}` is expected",
-        "- [ ] software name consistency",
-        "- [ ] version consistency",
-        "- [ ] owner consistency",
-        "- [ ] development mode consistency",
-        "- [ ] function wording supported by evidence",
-        "- [ ] no exaggerated or unsupported claims",
+        f"- [ ] 草稿状态为“{_draft_mode_label(fields['draft_mode'])}”，且符合当前申请阶段",
+        "- [ ] 软件全称、简称与申请表及文档材料一致",
+        "- [ ] 版本号与申请表、源程序材料、文档材料一致",
+        "- [ ] 著作权人信息与证明材料一致",
+        "- [ ] 开发方式与权属证明材料一致",
+        "- [ ] 主要功能表述均有代码、手册或人工审核证据支撑",
+        "- [ ] 未包含夸大、无证据或与实际软件不一致的描述",
     ]
     if fields["needs_confirmation"]:
-        lines.extend(["", "## Remaining confirmations"])
-        lines.extend(f"- [ ] `{field}`" for field in fields["needs_confirmation"])
+        lines.extend(["", "## 仍需确认的事实"])
+        lines.extend(f"- [ ] {_field_label(field)}" for field in fields["needs_confirmation"])
     return "\n".join(lines) + "\n"
 
 
 def code_doc(repo_root: Path, formats: list[str] | None = None) -> dict[str, Any]:
     ensure_output_dirs(repo_root)
     formats = normalize_formats(formats)
+    project_facts = load_yaml(repo_root / "softcopy" / "project_facts.yaml", {})
     repo_scan = load_json(repo_root / "softcopy" / "outputs" / "scan" / "repo_scan.json", {})
     selected = repo_scan.get("candidate_core_files", [])[:10]
     output_root = repo_root / "softcopy" / "outputs" / "code_doc"
@@ -837,26 +978,37 @@ def code_doc(repo_root: Path, formats: list[str] | None = None) -> dict[str, Any
         "selected_pages": [item["page"] for item in pages],
         "pages": pages,
     }
-    lines = ["# Source Code Evidence Draft", "", "## File Selection Summary"]
+    lines = [
+        "# 源程序鉴别材料",
+        "",
+        f"- 软件名称：{_material_software_name(project_facts)}",
+        f"- 版本号：{_material_version(project_facts)}",
+        "- 材料类型：源程序鉴别材料",
+        "- 编排规则：源程序按有效代码行分页，每页目标 50 行；超过 60 页时选取前 30 页和后 30 页。",
+        "",
+        "## 源码文件选取说明",
+    ]
     lines.extend(
         [
-            f"- `{item.get('path', '')}` ({item.get('effective_code_lines', 0)} lines)"
+            f"- `{item.get('path', '')}`（有效代码行：{item.get('effective_code_lines', 0)}）"
             for item in selected
         ]
-        or ["- None"]
+        or ["- 暂无内容，需补充后再用于正式提交。"]
     )
-    lines.extend(["", "## Paged Source Material"])
+    lines.extend(["", "## 分页源程序"])
     for page in pages:
         lines.extend(
             [
-                f"### Page {page['page']}: "
-                f"{page['path']} lines {page['line_start']}-{page['line_end']}",
+                f"### 第 {page['page']} 页："
+                f"{page['path']} 第 {page['line_start']}-{page['line_end']} 行",
                 "```text",
             ]
         )
         lines.extend(page.get("content_lines", []))
         lines.append("```")
-    lines.extend(["", "## Page Trace Notes", "- See `page_trace.json` and `code_pages.json`."])
+    if not pages:
+        lines.append("- 暂无内容，需补充后再用于正式提交。")
+    lines.extend(["", "## 追溯说明", "- 分页与来源信息见 `page_trace.json` 和 `code_pages.json`。"])
     markdown_path = output_root / "code_doc.md"
     write_text(markdown_path, "\n".join(lines) + "\n")
     write_json(output_root / "code_pages.json", page_payload)
@@ -865,10 +1017,10 @@ def code_doc(repo_root: Path, formats: list[str] | None = None) -> dict[str, Any
     rendered_list = ", ".join(f"`{item}`" for item in rendered) if rendered else "None"
     write_text(
         output_root / "code_doc_report.md",
-        "# Code Doc Report\n\n"
-        "- Draft source-code evidence was generated from current scan candidates.\n"
-        "- Review file selection before formal use.\n"
-        f"- Optional rendered outputs: {rendered_list}\n",
+        "# 源程序材料生成报告\n\n"
+        "- 已根据当前扫描候选文件生成源程序鉴别材料草稿。\n"
+        "- 正式使用前应人工复核源码文件选择、软件名称、版本号和分页结果。\n"
+        f"- 可选渲染文件：{rendered_list}\n",
     )
     return page_payload
 
@@ -881,7 +1033,7 @@ def _build_code_pages(repo_root: Path, selected: list[dict[str, Any]]) -> list[d
         path = repo_root / rel
         if not rel or not path.exists():
             continue
-        effective_lines = _effective_source_lines(path)
+        effective_lines = _effective_source_lines(path, repo_root)
         for chunk in _chunks(effective_lines, CODE_LINES_PER_PAGE):
             if not chunk:
                 continue
@@ -900,9 +1052,10 @@ def _build_code_pages(repo_root: Path, selected: list[dict[str, Any]]) -> list[d
     return pages
 
 
-def _effective_source_lines(path: Path) -> list[tuple[int, str]]:
+def _effective_source_lines(path: Path, repo_root: Path | None = None) -> list[tuple[int, str]]:
     lines: list[tuple[int, str]] = []
-    source_lines = path.read_text(encoding="utf-8", errors="ignore").splitlines()
+    root = repo_root or path.parent
+    source_lines = _read_source_text(root, path).text.splitlines()
     for number, raw_line in enumerate(source_lines, start=1):
         line = raw_line.rstrip()
         stripped = line.strip()
@@ -929,12 +1082,12 @@ def manual(repo_root: Path, formats: list[str] | None = None) -> dict[str, Any]:
     doc_type = _infer_doc_type(project_facts)
     sections = []
     for index, feature in enumerate(fmap.get("features", []), start=1):
-        title = feature.get("name", {}).get("value") or f"Feature {index}"
+        title = feature.get("name", {}).get("value") or f"功能 {index}"
         sections.append(
             {
                 "section_id": f"SEC-{index:03d}",
                 "title": title,
-                "goal": f"Describe how to use {title}.",
+                "goal": f"说明如何使用或调用“{title}”功能。",
                 "prerequisites": [],
                 "steps": [],
                 "expected_result": "",
@@ -956,7 +1109,7 @@ def manual(repo_root: Path, formats: list[str] | None = None) -> dict[str, Any]:
         write_yaml(manifest_path, stub)
         manifest = stub
     outline = "\n".join(f"- `{item['section_id']}` {item['title']}" for item in sections)
-    write_text(output_root / "manual_outline.md", f"# Manual Outline\n\n{outline}\n")
+    write_text(output_root / "manual_outline.md", f"# 文档材料大纲\n\n{outline}\n")
     pages = _build_manual_pages(manifest)
     page_payload = {
         "page_size_effective_lines": MANUAL_LINES_PER_PAGE,
@@ -964,18 +1117,23 @@ def manual(repo_root: Path, formats: list[str] | None = None) -> dict[str, Any]:
         "selected_pages": [item["page"] for item in pages],
         "pages": pages,
     }
+    material_title = _doc_type_title(doc_type)
     lines = [
-        "# Manual Draft",
+        f"# {material_title}",
         "",
-        f"- manifest_status: `{manifest.get('manifest_status', 'pending_review')}`",
+        f"- 软件名称：{_material_software_name(project_facts)}",
+        f"- 版本号：{_material_version(project_facts)}",
+        f"- 材料类型：{material_title}",
+        f"- 清单状态：{_status_label(manifest.get('manifest_status', 'pending_review'))}",
+        "- 编排规则：文档材料按有效文本行分页，每页目标 30 行；超过 60 页时选取前 30 页和后 30 页。",
         "",
-        "## Paged Manual Material",
+        "## 分页文档材料",
     ]
     for page in pages:
-        lines.extend([f"### Page {page['page']}: {page['section_id']}"])
+        lines.extend([f"### 第 {page['page']} 页：{page['section_id']}"])
         lines.extend(page["content_lines"])
     if not pages:
-        lines.append("- None")
+        lines.append("- 暂无内容，需补充后再用于正式提交。")
     markdown_path = output_root / "manual.md"
     write_text(markdown_path, "\n".join(lines) + "\n")
     write_json(output_root / "manual_pages.json", page_payload)
@@ -991,10 +1149,10 @@ def manual(repo_root: Path, formats: list[str] | None = None) -> dict[str, Any]:
     rendered_list = ", ".join(f"`{item}`" for item in rendered) if rendered else "None"
     write_text(
         output_root / "manual_report.md",
-        "# Manual Report\n\n"
-        "- Draft manual was generated from the current manifest.\n"
-        "- Fill real steps and screenshot references before formal use.\n"
-        f"- Optional rendered outputs: {rendered_list}\n",
+        "# 文档材料生成报告\n\n"
+        "- 已根据当前 manual manifest 生成文档鉴别材料草稿。\n"
+        "- 正式使用前应人工复核章节、步骤、截图引用、软件名称、版本号和分页结果。\n"
+        f"- 可选渲染文件：{rendered_list}\n",
     )
     return page_payload
 
@@ -1018,17 +1176,17 @@ def _build_manual_pages(manifest: dict[str, Any]) -> list[dict[str, Any]]:
     candidate_lines: list[tuple[str, str]] = []
     for section in manifest.get("sections", []):
         section_id = section.get("section_id", "")
-        candidate_lines.append((section_id, f"Section {section_id}: {section.get('title', '')}"))
-        candidate_lines.append((section_id, f"Goal: {section.get('goal', '')}"))
+        candidate_lines.append((section_id, f"章节 {section_id}：{section.get('title', '')}"))
+        candidate_lines.append((section_id, f"目标：{section.get('goal', '')}"))
         for item in section.get("prerequisites", []):
-            candidate_lines.append((section_id, f"Prerequisite: {item}"))
+            candidate_lines.append((section_id, f"前置条件：{item}"))
         for index, item in enumerate(section.get("steps", []), start=1):
-            candidate_lines.append((section_id, f"Step {index}: {item}"))
-        candidate_lines.append((section_id, f"Expected result: {section.get('expected_result', '')}"))
+            candidate_lines.append((section_id, f"步骤 {index}：{item}"))
+        candidate_lines.append((section_id, f"预期结果：{section.get('expected_result', '')}"))
         for item in section.get("notes", []):
-            candidate_lines.append((section_id, f"Note: {item}"))
+            candidate_lines.append((section_id, f"备注：{item}"))
         for item in section.get("screenshot_ids", []):
-            candidate_lines.append((section_id, f"Screenshot reference: {item}"))
+            candidate_lines.append((section_id, f"截图引用：{item}"))
 
     pages: list[dict[str, Any]] = []
     for index, chunk in enumerate(_chunks(candidate_lines, MANUAL_LINES_PER_PAGE), start=1):
@@ -1325,14 +1483,35 @@ def _validate_ownership(
                         f"softcopy/ownership_evidence.yaml#/required_documents/{index}/file_ref",
                     )
                 )
-            elif not _is_external_ref(file_ref) and not (repo_root / file_ref).exists():
-                errors.append(
-                    _error(
-                        "required_ownership_document_file_not_found",
-                        f"Required ownership document file `{file_ref}` was not found.",
-                        f"softcopy/ownership_evidence.yaml#/required_documents/{index}/file_ref",
+            elif not _is_external_ref(file_ref):
+                resolved, problem = _resolve_local_file_ref(repo_root, file_ref)
+                if problem:
+                    errors.append(
+                        _error(
+                            "required_ownership_document_file_ref_invalid",
+                            problem,
+                            f"softcopy/ownership_evidence.yaml#/required_documents/{index}/file_ref",
+                        )
                     )
-                )
+                elif resolved and not resolved.exists():
+                    errors.append(
+                        _error(
+                            "required_ownership_document_file_not_found",
+                            f"Required ownership document file `{file_ref}` was not found.",
+                            f"softcopy/ownership_evidence.yaml#/required_documents/{index}/file_ref",
+                        )
+                    )
+
+
+def _resolve_local_file_ref(repo_root: Path, file_ref: str) -> tuple[Path | None, str | None]:
+    candidate = Path(file_ref)
+    if candidate.is_absolute():
+        return None, f"Local ownership document file_ref `{file_ref}` must be relative to repo_root."
+    root = repo_root.resolve()
+    resolved = (root / candidate).resolve()
+    if not resolved.is_relative_to(root):
+        return None, f"Local ownership document file_ref `{file_ref}` must stay inside repo_root."
+    return resolved, None
 
 
 def _is_external_ref(value: str) -> bool:

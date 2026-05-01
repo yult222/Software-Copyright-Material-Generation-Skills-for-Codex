@@ -1,0 +1,76 @@
+ SoftCopy Code Review                                                                                                                                                                                            
+                                                                                                                                                                                                                  
+  What It Is                                                                                                                                                                                                      
+                                                                                                                                                                                                                  
+  A CLI workflow system for generating and validating Chinese software copyright (著作权) registration materials. ~2.2K lines of Python, 8 agent skills, YAML-driven contracts, and optional PDF/DOCX rendering   
+  with CJK support.                                                                                                                                                                                               
+                                                                                                                                                                                                                  
+  ---                                                                                                                                                                                                             
+  Strengths
+                                                                                                                                                                                                                  
+  - Well-architected 9-stage pipeline with clear separation (scan → intake → feature-map → ... → validate)                                                                                                        
+  - Strong compliance design — contract-driven gates, provenance tracking, readiness flags                                                                                                                        
+  - Good type annotations throughout (Python 3.10+ union syntax)                                                                                                                                                  
+  - Minimal dependencies — just PyYAML core; reportlab/python-docx optional
+  - All P0/P1 todo items completed, all 8 tests pass
+
+  ---
+  Critical Issues
+
+  ┌─────┬────────────────────────────────────────────────────────────────────────────────────────────────────────┬─────────────────────────┐
+  │  #  │                                                 Issue                                                  │        Location         │
+  ├─────┼────────────────────────────────────────────────────────────────────────────────────────────────────────┼─────────────────────────┤
+  │ 1   │ Test coverage is 14.7% — validate(), application(), code_doc(), and entire CLI are untested            │ tests/                  │
+  ├─────┼────────────────────────────────────────────────────────────────────────────────────────────────────────┼─────────────────────────┤
+  │ 2   │ Silent encoding errors — errors="ignore" drops corrupt bytes without warning                           │ workflow.py:209,224,905 │
+  ├─────┼────────────────────────────────────────────────────────────────────────────────────────────────────────┼─────────────────────────┤
+  │ 3   │ Bare except Exception: pass swallows all errors during font registration                               │ renderers.py:91-92,100  │
+  ├─────┼────────────────────────────────────────────────────────────────────────────────────────────────────────┼─────────────────────────┤
+  │ 4   │ No YAML/JSON validation — malformed config files cause raw tracebacks instead of useful errors         │ support.py:39,48        │
+  ├─────┼────────────────────────────────────────────────────────────────────────────────────────────────────────┼─────────────────────────┤
+  │ 5   │ Path traversal risk — file_ref from YAML joined to repo_root without .resolve().is_relative_to() check │ workflow.py:1328        │
+  └─────┴────────────────────────────────────────────────────────────────────────────────────────────────────────┴─────────────────────────┘
+
+  High-Priority Issues
+
+  ┌─────┬─────────────────────────────────────────────────────────────────────────────────┬───────────────────────┐
+  │  #  │                                      Issue                                      │       Location        │
+  ├─────┼─────────────────────────────────────────────────────────────────────────────────┼───────────────────────┤
+  │ 6   │ PDF silently truncates lines >120 chars — no warning, content lost              │ renderers.py:61       │
+  ├─────┼─────────────────────────────────────────────────────────────────────────────────┼───────────────────────┤
+  │ 7   │ _error/_warning/_info are near-identical — should be one _diagnostic() function │ workflow.py:1645-1654 │
+  ├─────┼─────────────────────────────────────────────────────────────────────────────────┼───────────────────────┤
+  │ 8   │ envelope() boolean positional arg is error-prone — should be keyword-only       │ workflow.py:132       │
+  ├─────┼─────────────────────────────────────────────────────────────────────────────────┼───────────────────────┤
+  │ 9   │ _required_item_for_field() is O(n*m) — should use dict lookup                   │ workflow.py:690-693   │
+  ├─────┼─────────────────────────────────────────────────────────────────────────────────┼───────────────────────┤
+  │ 10  │ No logging module — all output is stdout/file, hard to debug                    │ all files             │
+  └─────┴─────────────────────────────────────────────────────────────────────────────────┴───────────────────────┘
+
+  Medium Issues
+
+  ┌─────┬──────────────────────────────────────────────────────────────────────────────────────────────┬──────────────────────┐
+  │  #  │                                            Issue                                             │       Location       │
+  ├─────┼──────────────────────────────────────────────────────────────────────────────────────────────┼──────────────────────┤
+  │ 11  │ Page window selection logic duplicated between _select_page_window and _validate_page_window │ workflow.py:918,1487 │
+  ├─────┼──────────────────────────────────────────────────────────────────────────────────────────────┼──────────────────────┤
+  │ 12  │ Inconsistent return types across CLI commands (some dict, some None)                         │ cli.py:55-58         │
+  ├─────┼──────────────────────────────────────────────────────────────────────────────────────────────┼──────────────────────┤
+  │ 13  │ CJK font paths are macOS/Linux-only — missing Windows paths                                  │ renderers.py:108-114 │
+  ├─────┼──────────────────────────────────────────────────────────────────────────────────────────────┼──────────────────────┤
+  │ 14  │ Comment-line detection is naive (misses inline comments, multiline strings)                  │ workflow.py:216      │
+  ├─────┼──────────────────────────────────────────────────────────────────────────────────────────────┼──────────────────────┤
+  │ 15  │ CLI doesn't validate that repo_root is actually a softcopy project                           │ cli.py:40            │
+  └─────┴──────────────────────────────────────────────────────────────────────────────────────────────┴──────────────────────┘
+
+  ---
+  Top Recommendations (Priority Order)
+
+  1. Increase test coverage — especially validate(), application(), CLI dispatch, and error paths. Current 14.7% is risky for a compliance tool.
+  2. Add error context wrapping in support.py for YAML/JSON loads (catch parse errors, include file path in message).
+  3. Replace bare except Exception: pass with specific catches and stderr warnings.
+  4. Validate file_ref paths with resolve().is_relative_to(repo_root).
+  5. Make blocking keyword-only in envelope() to prevent positional misuse.
+  6. Add logging — critical for a tool that generates regulatory submission materials.
+
+  Want me to start fixing any of these?

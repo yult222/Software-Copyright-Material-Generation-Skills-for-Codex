@@ -8,6 +8,7 @@ from pathlib import Path
 from . import __version__
 from . import workflow
 from .renderers import RenderDependencyError, normalize_formats
+from .support import SoftCopyDataError
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -56,7 +57,7 @@ def main(argv: list[str] | None = None) -> int:
             result = dispatch[args.command](repo_root, formats=normalize_formats(args.formats))
         else:
             result = dispatch[args.command](repo_root)
-    except (RenderDependencyError, ValueError) as exc:
+    except (RenderDependencyError, SoftCopyDataError, ValueError) as exc:
         parser.error(str(exc))
     if args.command == "validate" and isinstance(result, dict):
         print(f"errors={len(result['errors'])} warnings={len(result['warnings'])} ready={result['ready']}")

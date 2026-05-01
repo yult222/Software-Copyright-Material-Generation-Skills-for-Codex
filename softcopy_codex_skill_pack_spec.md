@@ -138,7 +138,15 @@ SoftCopy Codex Skill Pack is a Codex-first specification and `Skill + CLI` toolk
 
 不得默认所有项目都生成 GUI 用户手册。文档策略必须根据 `project_type`、`has_gui`、`has_backend_api`、feature 形态进行切换。
 
-### 5.6 单一规范优先
+### 5.6 正式材料默认中文
+
+面向申请人阅读和提交审查的正式材料 MUST 默认使用中文，包括申请表草稿、源程序鉴别材料、文档鉴别材料、人工审查清单和生成报告。源码正文 MUST 保留原文，不自动翻译变量名、函数名、字符串、注释或命令输出。
+
+PDF/DOCX 版式 SHOULD 采用 A4、中文字体、清晰页眉页码、源码等宽字体和稳定行距等保守行业常用格式。字体、字号、页边距、行距属于渲染默认值，不得被描述为官方强制规则；官方 hard gate 仍以事实确认、追溯、页数和行数规则为准。
+
+内部结构化文件的 JSON/YAML key MAY 保持英文，以保证 schema、validator 和 evals 稳定。
+
+### 5.7 单一规范优先
 
 后续 coding、文案介绍、PR 说明、skill intro、README 段落，均应以本文档中的术语与状态定义为准。
 
